@@ -1,0 +1,6 @@
+[package]
+name = "ruSTM"
+version = "0.1.0"
+authors = ["Vincent Huang <vincom2@gmail.com>"]
+
+[dependencies]
