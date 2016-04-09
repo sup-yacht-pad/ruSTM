@@ -1,6 +1,15 @@
 [package]
 name = "ruSTM"
 version = "0.1.0"
-authors = ["Vincent Huang <vincom2@gmail.com>"]
+authors = ["Xue An Chuang <xchuang@andrew.cmu.edu>",
+           "Vincent Huang <vincom2@gmail.com>"]
+
+license = "MIT"
 
 [dependencies]
+
+
+[lib]
+path = "src/lib.rs"
+
+crate-type = "dylib"
