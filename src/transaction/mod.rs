@@ -1,3 +1,4 @@
 mod tobject;
 
-pub use Transaction;
+pub use self::tobject::Transaction;
+

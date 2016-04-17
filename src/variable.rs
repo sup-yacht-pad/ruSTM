@@ -1,6 +1,5 @@
 use std::marker::PhantomData;
-use super::Transaction;
-
+//use transaction::Transaction;
 
 pub struct TVar<T> {
     _marker: PhantomData<T>,
@@ -25,3 +24,4 @@ impl<T> TVar<T>
 	}
 
 }
+

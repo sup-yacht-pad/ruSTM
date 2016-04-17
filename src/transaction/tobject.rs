@@ -1,15 +1,15 @@
 use std::collections::HashMap;
-use std::collections::Vec;
+use std::vec::Vec;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::cell::Cell;
 
-use super::variable::{TVar};
-use super::res::*;
+use variable::{TVar};
+use res::{StmResult};
 
 static GLOBAL_SEQ_LOCK: AtomicUsize = ATOMIC_USIZE_INIT;
 
 pub struct Transaction {
-    usize: snapshot,
+    snapshot : usize,
     writeSet: HashMap<&mut TVar<T>, u32>,
     readSet: Vec<(&mut TVar<T>, u32)>,
 }
