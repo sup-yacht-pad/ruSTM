@@ -12,4 +12,4 @@ license = "MIT"
 [lib]
 path = "src/lib.rs"
 
-crate-type = "dylib"
+crate-type = ["dylib"]
