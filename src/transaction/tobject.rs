@@ -8,17 +8,21 @@ use res::{StmResult};
 
 static GLOBAL_SEQ_LOCK: AtomicUsize = ATOMIC_USIZE_INIT;
 
+struct Address(pub usize);
+struct Value(pub usize);
+
 pub struct Transaction {
     snapshot : usize,
-    writeSet: HashMap<&mut TVar<T>, u32>,
-    readSet: Vec<(&mut TVar<T>, u32)>,
+    writeSet: HashMap<Address, Value>,
+    readSet: Vec<(Address, Value)>,
 }
 
 impl Transaction {
+    // XXX what is this ss???
     fn new(ss: usize) -> Transaction {
         Transaction {
             snapShot: ss,
-            writeSet: BTreeMap::new(),
+            writeSet: HashMap::new(),
             readSet: Vec::new(),
         }
     }
@@ -72,36 +76,39 @@ impl Transaction {
         self.writeSet.clear();
     }
 
-    fn validate(&mut self) -> usize {
+    fn validate(&self) -> Option<usize> {
         loop {
-            let mut time : usize = GLOBAL_SEQ_LOCK.load(Ordering::SeqCst);
-            if (time & 1) != 0 {
+            let time = GLOBAL_SEQ_LOCK.load(Ordering::SeqCst);
+            if time & 1 != 0 {
                 continue;
             }
             for (addr, val) in self.readSet {
                 if (*addr).value != val {
-                    return -1;
+                    // XXX this should handle aborts more... "gracefully"?
+                    return None;
                 }
             }
-            if time == lock.load(Ordering::SeqCst) {
-                return time;
+            if time == GLOBAL_SEQ_LOCK.load(Ordering::SeqCst) {
+                return Some(time);
             }
         }
     }
 
     fn commit(&mut self) -> bool {
-        if self.writeSet.len() == 0 {
+        if self.writeSet.is_empty() {
             return true;
         }
         while GLOBAL_SEQ_LOCK.compare_and_swap(self.snapshot, self.snapshot+1, Ordering::SeqCst) != self.snapshot {
             self.snapshot = self.validate();
             if self.snapshot < 0 {
+                // XXX I'm sorry, why is this bailing?
                 return false;
             }
         }
         for (addr, val) in self.writeSet.iter() {
             (*addr).value = val;
         }
+        // XXX is this really just a plain store? seems sketchy
         GLOBAL_SEQ_LOCK.store(self.snapshot + 2, Ordering::SeqCst);
         return true;
     }
