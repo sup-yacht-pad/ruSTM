@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::cell::Cell;
 
 use variable::{TVar};
-use res::{StmResult};
+use res::{StmResult, StmError};
 
 static GLOBAL_SEQ_LOCK: AtomicUsize = ATOMIC_USIZE_INIT;
 
@@ -58,10 +58,10 @@ impl Transaction {
             self.snapshot = self.validate();
             val = (*var).value;
             if self.snapshot < 0 {
-                return Err(Retry);
+                return Err(StmError::Retry);
             }
         }
-        self.readset.push((addr, val));
+        self.readset.push((self.get_addr(), val));
         Ok(val)
     }
 

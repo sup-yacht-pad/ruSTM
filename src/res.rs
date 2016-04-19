@@ -1,2 +1,7 @@
-pub type StmResult<T> = Result<T, E>;
+pub enum StmError {
+    Fail,
+    Retry,
+}
+
+pub type StmResult<T> = Result<T, StmError>;
 
