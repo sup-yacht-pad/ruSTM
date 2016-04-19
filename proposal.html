@@ -1,0 +1,180 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"  
+  "http://www.w3.org/TR/html4/loose.dtd">  
+<html > 
+<head><title>Software Transactional Memory implementation for Rust</title> 
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"> 
+<meta name="generator" content="TeX4ht (http://www.tug.org/tex4ht/)"> 
+<meta name="originator" content="TeX4ht (http://www.tug.org/tex4ht/)"> 
+<!-- html --> 
+<meta name="src" content="proposal.tex"> 
+<meta name="date" content="2016-04-03 17:01:00"> 
+<link rel="stylesheet" type="text/css" href="proposal.css"> 
+</head><body 
+>
+   <div class="maketitle">
+                                                                     
+
+                                                                     
+                                                                     
+
+                                                                     
+
+<h2 class="titleHead">Software Transactional Memory implementation for
+Rust</h2>
+     <div class="author" ><span 
+class="cmr-12">Xue An Chuang</span>
+<br /><span 
+class="cmr-12">(</span><span 
+class="cmtt-12">xchuang</span><span 
+class="cmr-12">) </span><br class="and" /><span 
+class="cmr-12">Vincent Huang</span>
+<br />       <span 
+class="cmr-12">(</span><span 
+class="cmtt-12">vincenth</span><span 
+class="cmr-12">)</span></div><br />
+<div class="date" ><span 
+class="cmr-12">April 3, 2016</span></div>
+   </div>
+   <h3 class="likesectionHead"><a 
+ id="x1-1000"></a>Summary</h3>
+<!--l. 13--><p class="noindent" >We plan to implement a library providing software transactional memory
+support in the Rust programming language (on AMD64, but without TSX
+support).
+<!--l. 16--><p class="noindent" >
+   <h3 class="likesectionHead"><a 
+ id="x1-2000"></a>Background</h3>
+<!--l. 17--><p class="noindent" >Transactional memory (TM) is a concurrency control mechanism for managing
+access to shared memory in multithreaded programs. We talked about a
+hardware implementation of TM in class, and we plan to work on a software
+implementation. This means transactional memory without reliance on hardware
+support, making it possible for programs that want to use TM to run on multiple
+machines with different hardware specs.
+<!--l. 24--><p class="noindent" >In a program using TM, each thread may request modifications to (potentially)
+shared resources without regard for what other threads might be doing (even to
+the same shared memory). When and how read/write or write/write conflicts are
+resolved depends on the conflict resolution policy adopted. Contrast this with the
+                                                                     
+
+                                                                     
+traditional locking mechanism, which restricts access to a common resource to
+only a single thread at a time.
+<!--l. 32--><p class="noindent" >Arguably, STM should provide superior performance to traditional locking, as it
+should allow concurrent execution of threads competing for shared resources to a
+greater extent. Moreover, it removes the need for the programmer to explicity
+manage the synchronization between the different threads, allowing them to work
+at a higher level of abstraction. Manual lock management often leads to problems
+such as deadlock and livelock that the programmer has to worry about &#8212;
+liberating a programmer from such concerns can be a boon to both correctness
+and productivity. Hence, we aim to show (our implementation of) STM a viable
+alternative to traditional locking by comparing the performance of parallel
+programs written both ways.
+<!--l. 44--><p class="noindent" >
+   <h3 class="likesectionHead"><a 
+ id="x1-3000"></a>Challenges</h3>
+<!--l. 45--><p class="noindent" >For this project, we will have to develop an entire working STM library in Rust,
+a language that neither of us is very familiar with.
+<!--l. 48--><p class="noindent" >Additionally, difficult issues come up when implementing TM. For instance, if
+effectful operations (such as I/O) are performed within a transaction, problems
+arise if the transaction fails and has to be retried. Furthermore, implementing a
+correct concurrency mechanism is itself a challenging undertaking with many
+subtleties. For instance, STM has to ensure progress in program execution, which
+entails detecting and resolving certain conflicts. Another consideration is dealing
+with exceptions that can arise due to a thread performing unsafe memory
+operations. On top of all this, interaction with non-transactional code has to be
+handled in a consistent manner.
+<!--l. 59--><p class="noindent" >Beyond correctness, there is also the concern of efficiency. STM incurs significant
+overhead as a result of (in a possible implementation) having to maintain logs of
+data reads/writes for each thread.
+<!--l. 63--><p class="noindent" >
+   <h3 class="likesectionHead"><a 
+ id="x1-4000"></a>Resources</h3>
+<!--l. 64--><p class="noindent" >We&#8217;ll have to familiarise ourselves with Rust, probably by going through the <a 
+href="https://doc.rust-lang.org/book/" >Rust
+book</a>.
+<!--l. 67--><p class="noindent" >We&#8217;re considering one of either <a 
+href="http://dl.acm.org/citation.cfm?id=1693464" >NOrec</a> or <a 
+href="http://dl.acm.org/citation.cfm?id=2136065" >TL2</a> for our implementation.
+                                                                     
+
+                                                                     
+<!--l. 70--><p class="noindent" >
+   <h3 class="likesectionHead"><a 
+ id="x1-5000"></a>Goals and Deliverables</h3>
+<!--l. 71--><p class="noindent" >
+     <ol  class="enumerate1" >
+     <li 
+  class="enumerate" id="x1-5002x1">An STM library
+     </li>
+     <li 
+  class="enumerate" id="x1-5004x2">A testing harness
+     </li>
+     <li 
+  class="enumerate" id="x1-5006x3">Benchmarks,   written   with   our   library,   with   another   STM
+     implementation, and without STM</li></ol>
+<!--l. 77--><p class="noindent" >We intend to try for an optimistic STM implementation that, in the good case, is at
+least competitive with the performance of programs written without
+STM.
+<!--l. 80--><p class="noindent" >With extra time, we might try for a pessimistic implementation of STM as well,
+and compare and contrast the two.
+<!--l. 83--><p class="noindent" >
+   <h4 class="likesubsectionHead"><a 
+ id="x1-6000"></a>Demo</h4>
+<!--l. 84--><p class="noindent" >At the demo, we will show graphs comparing our STM implementation against
+locking programs and other implementations. If we write really cool interactive
+testing programs, we&#8217;ll also demo those.
+<!--l. 89--><p class="noindent" >
+   <h3 class="likesectionHead"><a 
+ id="x1-7000"></a>Platform choice</h3>
+<!--l. 90--><p class="noindent" >We plan to target AMD64 without TSX or other hardware transactional memory
+features. We chose AMD64 because of ease of access to development hardware.
+We&#8217;re going with the no hardware support option because
+     <ul class="itemize1">
+     <li class="itemize">Support for HTM is still not widely available at this point, and in fact
+     one of us has a personal machine sufficiently old that it does not have
+     working TSX functionality. We would like our library to work on as
+     wide an array of hardware as possible.
+                                                                     
+
+                                                                     
+     </li>
+     <li class="itemize">We feel it will be more of a challenge to implement this entirely in
+     software.</li></ul>
+<!--l. 102--><p class="noindent" >
+   <h3 class="likesectionHead"><a 
+ id="x1-8000"></a>Schedule</h3>
+     <ul class="itemize1">
+     <li class="itemize">Apr 1&#8211;7:
+          <ul class="itemize2">
+          <li class="itemize">Learn Rust
+          </li>
+          <li class="itemize">Design STM library API</li></ul>
+     </li>
+     <li class="itemize">Apr 8&#8211;14:
+          <ul class="itemize2">
+          <li class="itemize">Implement read/write set maintenance for each thread
+          </li>
+          <li class="itemize">Implement optimistic commit communication between threads
+          </li>
+          <li class="itemize">Implement task abortion and restarting</li></ul>
+     </li>
+     <li class="itemize">Apr 15&#8211;22:
+          <ul class="itemize2">
+          <li class="itemize">Implement exception handling
+          </li>
+          <li class="itemize">Implement program progress guarantees</li></ul>
+     </li>
+     <li class="itemize">Apr 22&#8211;May 6:
+          <ul class="itemize2">
+          <li class="itemize">Performance comparisons against locking/other STM libraries
+                                                                     
+
+                                                                     
+          </li>
+          <li class="itemize">Final report</li></ul>
+     </li></ul>
+    
+</body></html> 
+
+                                                                     
+
+
