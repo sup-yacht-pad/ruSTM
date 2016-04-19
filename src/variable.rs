@@ -3,9 +3,14 @@ use transaction::Transaction;
 use res::StmResult;
 
 pub struct TVar<T> {
-    _marker: PhantomData<T>, // do we really care about this?
+    _marker: PhantomData<T>, // do we really care about this? xref: tobject.rs:56
+    // XXX "better" plan: either bound this with a trait for types that can be
+    // turned into usize, or make functions take Into<usize> (figure out if this is possible)
     pub value: usize,
 }
+
+#[derive(PartialEq, Eq, Hash)]
+pub struct Address(pub usize);
 
 impl<T> TVar<T>
 {
@@ -24,8 +29,8 @@ impl<T> TVar<T>
 	    transaction.write(self, value)
 	}
 
-    pub fn get_addr(&self) -> usize {
-        self._marker as *const PhantomData<T>
+    pub fn get_addr(&self) -> Address {
+        Address(self._marker as *const PhantomData<T>)
     }
 }
 

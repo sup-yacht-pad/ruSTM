@@ -2,28 +2,29 @@ use std::collections::HashMap;
 use std::vec::Vec;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::cell::Cell;
+use std::mem; // XXX what are you doing with your life?
 
-use variable::{TVar};
+use variable::{TVar, Address};
 use res::{StmResult, StmError};
 
 static GLOBAL_SEQ_LOCK: AtomicUsize = ATOMIC_USIZE_INIT;
 
-struct Address(pub usize);
+// XXX what was the point of this besides acting tough?
 struct Value(pub usize);
 
 pub struct Transaction {
     snapshot : usize,
-    writeSet: HashMap<Address, Value>,
-    readSet: Vec<(Address, Value)>,
+    write_set: HashMap<Address, Value>,
+    read_set: Vec<(Address, Value)>,
 }
 
 impl Transaction {
-    // XXX what is this ss???
+    // XXX what is this ss??? wouldn't it make more sense to pull it from the global directly?
     fn new(ss: usize) -> Transaction {
         Transaction {
-            snapShot: ss,
-            writeSet: HashMap::new(),
-            readSet: Vec::new(),
+            snapshot: ss,
+            write_set: HashMap::new(),
+            read_set: Vec::new(),
         }
     }
 
@@ -48,32 +49,40 @@ impl Transaction {
         }
     }
 
-    pub fn read<T>(&mut self, var: &mut TVar<T>) -> StmResult<T> {
-        match self.writeSet.get(&var) {
-            Some(&val) => { return Ok(val) }
+    pub fn read<T>(&mut self, var: &TVar<T>) -> StmResult<T> {
+        match self.write_set.get(&var.get_addr()) {
+            // XXX UHHHH something is very wrong; what was the point of keeping
+            // PhantomData<T> around if we're just going to do this?
+            // RELOOK
+            // xref: variable.rs:6
+            Some(&Value(val)) => { return Ok(mem::transmute(val)); }
             None => {}
-        };
+        }
         let mut val = (*var).value;
         while self.snapshot != GLOBAL_SEQ_LOCK.load(Ordering::SeqCst) {
-            self.snapshot = self.validate();
-            val = (*var).value;
-            if self.snapshot < 0 {
-                return Err(StmError::Retry);
+            match self.validate() {
+                None => { return Err(StmError::Retry); }
+                Some(ss) => {
+                    self.snapshot = ss;
+                    val = (*var).value;
+                }
             }
         }
-        self.readset.push((self.get_addr(), val));
-        Ok(val)
+        self.read_set.push((var.get_addr(), Value(val)));
+        // XXX same fucking comment
+        Ok(mem::transmute(val))
     }
 
     pub fn write<T>(&mut self, var: &mut TVar<T>, value: T) -> StmResult<()> {
-        self.writeSet.insert(var, value);
+        self.write_set.insert(var.get_addr(), Value(value));
         Ok(())
 
     }
 
+    // XXX what is this for?
     fn clear(&mut self) {
-        self.readSet.clear();
-        self.writeSet.clear();
+        self.read_set.clear();
+        self.write_set.clear();
     }
 
     fn validate(&self) -> Option<usize> {
@@ -82,7 +91,7 @@ impl Transaction {
             if time & 1 != 0 {
                 continue;
             }
-            for (addr, val) in self.readSet {
+            for (addr, val) in self.read_set {
                 if (*addr).value != val {
                     // XXX this should handle aborts more... "gracefully"?
                     return None;
