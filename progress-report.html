@@ -2,10 +2,23 @@
 <h1><a id="Project_checkpoint_0"></a>Project checkpoint</h1>
 <p>Situation Normal, All’s Fine and Unconcerning</p>
 <h2><a id="Schedule_4"></a>Schedule</h2>
-<p>We are behind schedule. Our <a href="http://sup-yacht-pad.github.io/ruSTM/proposal.html">original schedule</a> had us at a point where we would have implemented a whole bunch of cool features (e.g. task abort and restart) by now. We failed to account for our relative unfamiliarity with a new programming language.</p>
-<p>An updated schedule will be posted on the main page.</p>
+<p>We are behind schedule. Our <a href="proposal.html">original schedule</a> had us at a point where we would have implemented a whole bunch of cool features (e.g. task abort and restart) by now. We failed to account for our relative unfamiliarity with a new programming language.</p>
+<p>An updated schedule can be found <a href="schedule.html">here</a>.</p>
 <h2><a id="Work_done_10"></a>Work done</h2>
 <p>We have implemented the STM primitives the NOrec paper talks about, exactly how it says to do them. The STM system described in the paper only handles objects that can be read/written as words. We’re trying to present a better interface to this by using Rust features such as the <code>Into&lt;usize&gt;</code> trait to allow users to use our STM implementation for more types (they do, however, have to provide the conversion to <code>usize</code> (which is Rust’s platform-dependent pointer-sized unsigned integer). However, since we’re both fairly unfamiliar with Rust, we haven’t gotten this to compile yet.</p>
-<p>We believe that we can work out these issues over the next few days and finish off deliverable number 1, which is of course the STM library itself. Then we’ll start writing benchmarks (e.g. hand-over-hand locking trees vs STM trees). It’s unlikely that we’ll have time to mess with pessimistic STM or have too pretty an abort interface for our STM library at this rate.</p>
+<p>In addition, the library interface is somewhat ugly right now. For instance, our implementation of a transaction abort requires the user to wrap certain library functions with a <code>try!</code> macro; we feel it is suboptimal to foist this responsibility onto the user.</p>
+<h2><a id="Goals_and_deliverables_16"></a>Goals and deliverables</h2>
+<p>We believe that we can work out these issues over the next few days and finish off deliverable number 1, which is of course the STM library itself. Then we’ll start writing benchmarks (e.g. hand-over-hand locking trees vs STM trees). We should still be on track to hit the original deliverables that we listed on the proposal.</p>
+<p>It’s unlikely that we’ll have time to mess with pessimistic STM or have too pretty an abort interface for our STM library at this rate.</p>
+<p>To summarise our goals for the project presentation deadline:</p>
+<ol>
+<li>An STM library</li>
+<li>A testing harness</li>
+<li>Benchmarks, written with our library, with another STM implementation, and without STM</li>
+</ol>
+<h2><a id="Presentation_plan_27"></a>Presentation plan</h2>
+<p>We have yet to decide what our presentation should look like. However, we will most likely aim to demonstrate the performance benefits of using our STM library to synchronize multithreaded access to shared data over using traditional locks. We also plan to log the performance of our library as we add changes and make progress along the way. The results will probably be presented in the form of graphs/charts.</p>
+<h2><a id="Major_concerns_31"></a>Major concerns</h2>
+<p>We are still learning Rust. It has many interesting features such as concepts of borrowing and ownership that we have yet to fully grasp. Also, as we have not yet been able to get our library to compile, we do not know if there are any major correctness or efficiency issues that might necessitate a large redesign of our library.</p>
 
 </body></html>
