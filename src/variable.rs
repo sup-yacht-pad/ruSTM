@@ -29,8 +29,8 @@ impl<T> TVar<T>
 	    transaction.write(self, value)
 	}
 
-    pub fn get_addr(&self) -> Address {
-        Address(self._marker as *const PhantomData<T>)
+    pub fn get_addr(&mut self) -> Address {
+        Address(self as *mut TVar<T> as usize)
     }
 }
 
