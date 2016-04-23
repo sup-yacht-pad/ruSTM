@@ -74,7 +74,7 @@ impl Transaction {
     }
 
     pub fn write<T>(&mut self, var: &mut TVar<T>, value: T) -> StmResult<()> {
-        self.write_set.insert(var.get_addr(), Value(value));
+        self.write_set.insert(var.get_addr(), Value(mem::transmute(value)));
         Ok(())
 
     }
@@ -91,8 +91,8 @@ impl Transaction {
             if time & 1 != 0 {
                 continue;
             }
-            for (addr, val) in self.read_set {
-                if (*addr).value != val {
+            for (Address(addr), Value(val)) in self.read_set {
+                if addr != val {
                     // XXX this should handle aborts more... "gracefully"?
                     return None;
                 }
@@ -104,17 +104,16 @@ impl Transaction {
     }
 
     fn commit(&mut self) -> bool {
-        if self.writeSet.is_empty() {
+        if self.write_set.is_empty() {
             return true;
         }
         while GLOBAL_SEQ_LOCK.compare_and_swap(self.snapshot, self.snapshot+1, Ordering::SeqCst) != self.snapshot {
-            self.snapshot = self.validate();
-            if self.snapshot < 0 {
-                // XXX I'm sorry, why is this bailing?
-                return false;
+            match self.validate() {
+                None => { return false; } // XXX why is this bailing?
+                Some(ss) => { self.snapshot = ss; }
             }
         }
-        for (addr, val) in self.writeSet.iter() {
+        for (addr, val) in self.write_set.iter() {
             (*addr).value = val;
         }
         // XXX is this really just a plain store? seems sketchy
