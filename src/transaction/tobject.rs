@@ -92,6 +92,9 @@ impl Transaction {
                 continue;
             }
             for (Address(addr), Value(val)) in self.read_set {
+                // XXX wait what this is WRONG you idiot
+                // you're comparing a memory address to the value
+                // that might be stored there... omg...
                 if addr != val {
                     // XXX this should handle aborts more... "gracefully"?
                     return None;
@@ -114,6 +117,7 @@ impl Transaction {
             }
         }
         for (addr, val) in self.write_set.iter() {
+            // XXX gotta cast this addr back to TVar! urgh
             (*addr).value = val;
         }
         // XXX is this really just a plain store? seems sketchy
