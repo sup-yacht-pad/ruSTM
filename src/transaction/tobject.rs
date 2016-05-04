@@ -2,24 +2,21 @@ use std::collections::HashMap;
 use std::vec::Vec;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::cell::Cell;
-use std::mem; // XXX what are you doing with your life?
+use std::any::Any;
+use std::sync::Arc;
 
-use variable::{TVar, Address};
+use variable::{TVar, VarControlBlock};
 use res::{StmResult, StmError};
 
 static GLOBAL_SEQ_LOCK: AtomicUsize = ATOMIC_USIZE_INIT;
 
-// XXX what was the point of this besides acting tough?
-struct Value(pub usize);
-
 pub struct Transaction {
     snapshot : usize,
-    write_set: HashMap<Address, Value>,
-    read_set: Vec<(Address, Value)>,
+    write_set: HashMap<usize, Arc<Any>>,
+    read_set: Vec<(usize, Arc<Any>)>,
 }
 
 impl Transaction {
-    // XXX what is this ss??? wouldn't it make more sense to pull it from the global directly?
     fn new(ss: usize) -> Transaction {
         Transaction {
             snapshot: ss,
@@ -49,37 +46,39 @@ impl Transaction {
         }
     }
 
-    pub fn read<T>(&mut self, var: &TVar<T>) -> StmResult<T> {
-        match self.write_set.get(&var.get_addr()) {
-            // XXX UHHHH something is very wrong; what was the point of keeping
-            // PhantomData<T> around if we're just going to do this?
-            // RELOOK
-            // xref: variable.rs:6
-            Some(&Value(val)) => { return Ok(mem::transmute(val)); }
+    fn downcast<T: Any + Clone>(var: Arc<Any>) -> T {
+        var.downcast_ref::<T>()
+           .expect("Vars with different types and same address")
+           .clone()
+    }
+
+    pub fn read<T: Any + Clone + Eq>(&mut self, var: &TVar<T>) -> StmResult<T> {
+        let block_addr = var.get_block_addr();
+        match self.write_set.get(&block_addr) {
+            Some(&value) => { return Ok(Transaction::downcast(value)); }
             None => {}
         }
-        let mut val = (*var).value;
+        let block = unsafe {*(block_addr as *const VarControlBlock)};
+        let mut val = block.value;
         while self.snapshot != GLOBAL_SEQ_LOCK.load(Ordering::SeqCst) {
             match self.validate() {
                 None => { return Err(StmError::Retry); }
                 Some(ss) => {
                     self.snapshot = ss;
-                    val = (*var).value;
+                    val = block.value;
                 }
             }
         }
-        self.read_set.push((var.get_addr(), Value(val)));
-        // XXX same fucking comment
-        Ok(mem::transmute(val))
+        self.read_set.push((block_addr, val));
+        Ok(Transaction::downcast(val))
     }
 
-    pub fn write<T>(&mut self, var: &mut TVar<T>, value: T) -> StmResult<()> {
-        self.write_set.insert(var.get_addr(), Value(mem::transmute(value)));
+    pub fn write<T: Any + Clone + Eq>(&mut self, var: &TVar<T>, value: T) -> StmResult<()> {
+        let block_addr = var.get_block_addr();
+        self.write_set.insert(block_addr, value);
         Ok(())
-
     }
 
-    // XXX what is this for?
     fn clear(&mut self) {
         self.read_set.clear();
         self.write_set.clear();
@@ -91,12 +90,9 @@ impl Transaction {
             if time & 1 != 0 {
                 continue;
             }
-            for (Address(addr), Value(val)) in self.read_set {
-                // XXX wait what this is WRONG you idiot
-                // you're comparing a memory address to the value
-                // that might be stored there... omg...
-                if addr != val {
-                    // XXX this should handle aborts more... "gracefully"?
+            for (addr, val) in self.read_set {
+                let cur_val = unsafe {*(addr as *const VarControlBlock)}.value;
+                if cur_val != val {
                     return None;
                 }
             }
@@ -112,15 +108,14 @@ impl Transaction {
         }
         while GLOBAL_SEQ_LOCK.compare_and_swap(self.snapshot, self.snapshot+1, Ordering::SeqCst) != self.snapshot {
             match self.validate() {
-                None => { return false; } // XXX why is this bailing?
+                None => { return false; }
                 Some(ss) => { self.snapshot = ss; }
             }
         }
-        for (addr, val) in self.write_set.iter() {
-            // XXX gotta cast this addr back to TVar! urgh
-            (*addr).value = val;
+        for (addr, val) in self.write_set {
+            let block = unsafe {*(addr as *const VarControlBlock)};
+            block.value = val;
         }
-        // XXX is this really just a plain store? seems sketchy
         GLOBAL_SEQ_LOCK.store(self.snapshot + 2, Ordering::SeqCst);
         return true;
     }
