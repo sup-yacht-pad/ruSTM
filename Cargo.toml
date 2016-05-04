@@ -12,4 +12,6 @@ license = "MIT"
 [lib]
 path = "src/lib.rs"
 
+test = true
+
 crate-type = ["dylib"]

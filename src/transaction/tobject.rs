@@ -1,8 +1,6 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::vec::Vec;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
-use std::cell::Cell;
-use std::any::Any;
 use std::sync::Arc;
 
 use variable::{TVari32, VarControlBlocki32};
@@ -12,15 +10,15 @@ static GLOBAL_SEQ_LOCK: AtomicUsize = ATOMIC_USIZE_INIT;
 
 pub struct Transaction {
     snapshot : usize,
-    write_set: HashMap<usize, i32>,
-    read_set: Vec<(usize, i32)>,
+    write_set: BTreeMap<Arc<VarControlBlocki32>, i32>,
+    read_set: Vec<(Arc<VarControlBlocki32>, i32)>,
 }
 
 impl Transaction {
     fn new(ss: usize) -> Transaction {
         Transaction {
             snapshot: ss,
-            write_set: HashMap::new(),
+            write_set: BTreeMap::new(),
             read_set: Vec::new(),
         }
     }
@@ -46,13 +44,12 @@ impl Transaction {
         }
     }
 
-    pub fn readi32(&mut self, var: &mut TVari32) -> StmResult<i32> {
-        let block_addr = var.get_block_addr();
-        match self.write_set.get(&block_addr) {
+    pub fn readi32(&mut self, var: &TVari32) -> StmResult<i32> {
+        let block = var.control_block().clone();
+        match self.write_set.get(&block) {
             Some(&value) => { return Ok(value); }
             None => {}
         }
-        let block = unsafe {*(block_addr as *mut VarControlBlocki32)};
         let mut val = block.value;
         while self.snapshot != GLOBAL_SEQ_LOCK.load(Ordering::SeqCst) {
             match self.validate() {
@@ -63,13 +60,13 @@ impl Transaction {
                 }
             }
         }
-        self.read_set.push((block_addr, val));
+        self.read_set.push((block, val));
         Ok(val)
     }
 
-    pub fn writei32(&mut self, var: &mut TVari32, value: i32) -> StmResult<()> {
-        let block_addr = var.get_block_addr();
-        self.write_set.insert(block_addr, value);
+    pub fn writei32(&mut self, var: &TVari32, value: i32) -> StmResult<()> {
+        let block = var.control_block().clone();
+        self.write_set.insert(block, value);
         Ok(())
     }
 
@@ -85,8 +82,8 @@ impl Transaction {
                 continue;
             }
             let copy = self.read_set.clone();
-            for (addr, val) in copy {
-                let cur_val = unsafe {*(addr as *mut VarControlBlocki32)}.value;
+            for (block, val) in copy {
+                let cur_val = block.value;
                 if cur_val != val {
                     return None;
                 }
@@ -108,9 +105,9 @@ impl Transaction {
             }
         }
         let copy = self.write_set.clone();
-        for (addr, val) in copy {
-            let mut block = unsafe {*(addr as *mut VarControlBlocki32)};
-            block.value = val;
+        for (mut block, val) in copy {
+            let b = Arc::make_mut(&mut block);
+            b.commit(val);
         }
         GLOBAL_SEQ_LOCK.store(self.snapshot + 2, Ordering::SeqCst);
         return true;
