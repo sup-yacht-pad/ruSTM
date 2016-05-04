@@ -5,15 +5,15 @@ use std::cell::Cell;
 use std::any::Any;
 use std::sync::Arc;
 
-use variable::{TVar, VarControlBlock};
+use variable::{TVari32, VarControlBlocki32};
 use res::{StmResult, StmError};
 
 static GLOBAL_SEQ_LOCK: AtomicUsize = ATOMIC_USIZE_INIT;
 
 pub struct Transaction {
     snapshot : usize,
-    write_set: HashMap<usize, Arc<Any>>,
-    read_set: Vec<(usize, Arc<Any>)>,
+    write_set: HashMap<usize, i32>,
+    read_set: Vec<(usize, i32)>,
 }
 
 impl Transaction {
@@ -46,19 +46,13 @@ impl Transaction {
         }
     }
 
-    fn downcast<T: Any + Clone>(var: Arc<Any>) -> T {
-        var.downcast_ref::<T>()
-           .expect("Vars with different types and same address")
-           .clone()
-    }
-
-    pub fn read<T: Any + Clone + Eq>(&mut self, var: &TVar<T>) -> StmResult<T> {
+    pub fn readi32(&mut self, var: &mut TVari32) -> StmResult<i32> {
         let block_addr = var.get_block_addr();
         match self.write_set.get(&block_addr) {
-            Some(&value) => { return Ok(Transaction::downcast(value)); }
+            Some(&value) => { return Ok(value); }
             None => {}
         }
-        let block = unsafe {*(block_addr as *const VarControlBlock)};
+        let block = unsafe {*(block_addr as *mut VarControlBlocki32)};
         let mut val = block.value;
         while self.snapshot != GLOBAL_SEQ_LOCK.load(Ordering::SeqCst) {
             match self.validate() {
@@ -70,10 +64,10 @@ impl Transaction {
             }
         }
         self.read_set.push((block_addr, val));
-        Ok(Transaction::downcast(val))
+        Ok(val)
     }
 
-    pub fn write<T: Any + Clone + Eq>(&mut self, var: &TVar<T>, value: T) -> StmResult<()> {
+    pub fn writei32(&mut self, var: &mut TVari32, value: i32) -> StmResult<()> {
         let block_addr = var.get_block_addr();
         self.write_set.insert(block_addr, value);
         Ok(())
@@ -90,8 +84,9 @@ impl Transaction {
             if time & 1 != 0 {
                 continue;
             }
-            for (addr, val) in self.read_set {
-                let cur_val = unsafe {*(addr as *const VarControlBlock)}.value;
+            let copy = self.read_set.clone();
+            for (addr, val) in copy {
+                let cur_val = unsafe {*(addr as *mut VarControlBlocki32)}.value;
                 if cur_val != val {
                     return None;
                 }
@@ -112,8 +107,9 @@ impl Transaction {
                 Some(ss) => { self.snapshot = ss; }
             }
         }
-        for (addr, val) in self.write_set {
-            let block = unsafe {*(addr as *const VarControlBlock)};
+        let copy = self.write_set.clone();
+        for (addr, val) in copy {
+            let mut block = unsafe {*(addr as *mut VarControlBlocki32)};
             block.value = val;
         }
         GLOBAL_SEQ_LOCK.store(self.snapshot + 2, Ordering::SeqCst);

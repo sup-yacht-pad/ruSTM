@@ -5,52 +5,45 @@ use std::sync::Arc;
 use std::any::Any;
 use std::cmp::Eq;
 
-pub struct VarControlBlock {
-    pub value: Arc<Any>,
+pub struct VarControlBlocki32 {
+    pub value: i32,
 }
 
-impl VarControlBlock {
-    pub fn new<T>(val: T) -> Arc<VarControlBlock>
-        where T: Any + Eq
+impl VarControlBlocki32 {
+    pub fn new(val: i32) -> VarControlBlocki32
     {
-        let ctrl = VarControlBlock {
-            value: Arc::new(val),
+        let ctrl = VarControlBlocki32 {
+            value: val,
         };
-        Arc::new(ctrl)
+        ctrl
     }
 
-    fn get_addr(&self) -> usize {
-        self as *const VarControlBlock as usize
+    fn get_addr(&mut self) -> usize {
+        self as *mut VarControlBlocki32 as usize
     }
 }
 
-#[derive(Clone)]
-pub struct TVar<T> {
-    _marker: PhantomData<T>,
-    control_block: Arc<VarControlBlock>,
+pub struct TVari32 {
+    _marker: PhantomData<i32>,
+    pub control_block: VarControlBlocki32,
 }
 
-impl<T> TVar<T>
-    where T: Any + Clone + Eq
+impl TVari32
 {
-    pub fn new(val: T) -> TVar<T> {
-        TVar {
+    pub fn new(val: i32) -> TVari32 {
+        TVari32 {
             _marker: PhantomData,
-            control_block: VarControlBlock::new(val),
+            control_block: VarControlBlocki32::new(val),
         }
     }
 
-   	pub fn read(&self, transaction: &mut Transaction) -> StmResult<T> {
-        transaction.read(self)
+   	pub fn read(&mut self, transaction: &mut Transaction) -> StmResult<i32> {
+        transaction.readi32(self)
     }
 
-	pub fn write(&self, transaction: &mut Transaction, value: T) -> StmResult<()> {
-	    transaction.write(self, value)
+	pub fn write(&mut self, transaction: &mut Transaction, value: i32) -> StmResult<()> {
+	    transaction.writei32(self, value)
 	}
-
-    pub fn get_addr(&mut self) -> usize {
-        self as *mut TVar<T> as usize
-    }
 
     pub fn get_block_addr(&mut self) -> usize {
         self.control_block.get_addr()
