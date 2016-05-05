@@ -1,7 +1,6 @@
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::vec::Vec;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
-use std::sync::Arc;
 
 use variable::{TVari32, VarControlBlocki32};
 use res::{StmResult, StmError};
@@ -10,15 +9,15 @@ static GLOBAL_SEQ_LOCK: AtomicUsize = ATOMIC_USIZE_INIT;
 
 pub struct Transaction {
     snapshot : usize,
-    write_set: BTreeMap<Arc<VarControlBlocki32>, i32>,
-    read_set: Vec<(Arc<VarControlBlocki32>, i32)>,
+    write_set: HashMap<usize, i32>,
+    read_set: Vec<(usize, i32)>,
 }
 
 impl Transaction {
     fn new(ss: usize) -> Transaction {
         Transaction {
             snapshot: ss,
-            write_set: BTreeMap::new(),
+            write_set: HashMap::new(),
             read_set: Vec::new(),
         }
     }
@@ -45,28 +44,30 @@ impl Transaction {
     }
 
     pub fn readi32(&mut self, var: &TVari32) -> StmResult<i32> {
-        let block = var.control_block().clone();
-        match self.write_set.get(&block) {
+        let addr = var.get_addr();
+        println!("this is the fucking address: {0:x}", addr);
+        match self.write_set.get(&addr) {
             Some(&value) => { return Ok(value); }
             None => {}
         }
-        let mut val = block.value;
+        let mut val = var.value;
         while self.snapshot != GLOBAL_SEQ_LOCK.load(Ordering::SeqCst) {
             match self.validate() {
                 None => { return Err(StmError::Retry); }
                 Some(ss) => {
                     self.snapshot = ss;
-                    val = block.value;
+                    val = var.value;
                 }
             }
         }
-        self.read_set.push((block, val));
+        self.read_set.push((addr, val));
         Ok(val)
     }
 
     pub fn writei32(&mut self, var: &TVari32, value: i32) -> StmResult<()> {
-        let block = var.control_block().clone();
-        self.write_set.insert(block, value);
+        let addr = var.get_addr();
+        println!("this is the cheebye address: {0:x}", addr);
+        self.write_set.insert(addr, value);
         Ok(())
     }
 
@@ -81,9 +82,9 @@ impl Transaction {
             if time & 1 != 0 {
                 continue;
             }
-            let copy = self.read_set.clone();
-            for (block, val) in copy {
-                let cur_val = block.value;
+            for &(addr, val) in &self.read_set {
+                let tvar = unsafe {*(addr as *mut TVari32)};
+                let cur_val = tvar.value;
                 if cur_val != val {
                     return None;
                 }
@@ -104,13 +105,20 @@ impl Transaction {
                 Some(ss) => { self.snapshot = ss; }
             }
         }
-        let copy = self.write_set.clone();
-        for (mut block, val) in copy {
-            let b = Arc::make_mut(&mut block); //the wrong commit could be coming here, how to fix?
-            b.commit(val);
+        for (&addr, &val) in &self.write_set {
+            let mut tvar = unsafe {*(addr as *mut TVari32)};
+            tvar.commit(val.clone());
+            tvar.value = val.clone();
+            println!("committing to address {0:x}", addr);
+            println!("the new value is: {}", tvar.read_atomic());
+        }
+        for (&addr, &val) in &self.write_set {
+            let mut tvar = unsafe {*(addr as *mut TVari32)};
+            println!("verifying commit to address {0:x}", addr);
+            println!("the new value is: {}", tvar.read_atomic());
         }
         GLOBAL_SEQ_LOCK.store(self.snapshot + 2, Ordering::SeqCst);
-        return true;
+        true
     }
 }
 

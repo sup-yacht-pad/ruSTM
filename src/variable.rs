@@ -24,7 +24,6 @@ impl VarControlBlocki32 {
 
     pub fn commit(&mut self, val: i32) -> () {
         self.value = val;
-        ()
     }
 }
 
@@ -48,10 +47,10 @@ impl PartialOrd for VarControlBlocki32 {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct TVari32 {
     _marker: PhantomData<i32>,
-    pub control_block: Arc<VarControlBlocki32>,
+    pub value: i32,
 }
 
 impl TVari32
@@ -59,7 +58,7 @@ impl TVari32
     pub fn new(val: i32) -> TVari32 {
         TVari32 {
             _marker: PhantomData,
-            control_block: VarControlBlocki32::new(val),
+            value: val,
         }
     }
 
@@ -71,12 +70,16 @@ impl TVari32
 	    transaction.writei32(self, value)
 	}
 
-    pub fn control_block(&self) -> &Arc<VarControlBlocki32> {
-        &self.control_block
+    pub fn read_atomic(&self) -> i32 {
+        self.value
     }
 
-    pub fn read_atomic(&self) -> i32 {
-        self.control_block.value
+    pub fn get_addr(&self) -> usize {
+        self as *const TVari32 as usize
+    }
+
+    pub fn commit(&mut self, val: i32) -> () {
+        self.value = val;
     }
 }
 
