@@ -74,5 +74,9 @@ impl TVari32
     pub fn control_block(&self) -> &Arc<VarControlBlocki32> {
         &self.control_block
     }
+
+    pub fn read_atomic(&self) -> i32 {
+        self.control_block.value
+    }
 }
 

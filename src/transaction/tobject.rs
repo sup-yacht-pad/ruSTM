@@ -106,7 +106,7 @@ impl Transaction {
         }
         let copy = self.write_set.clone();
         for (mut block, val) in copy {
-            let b = Arc::make_mut(&mut block);
+            let b = Arc::make_mut(&mut block); //the wrong commit could be coming here, how to fix?
             b.commit(val);
         }
         GLOBAL_SEQ_LOCK.store(self.snapshot + 2, Ordering::SeqCst);
