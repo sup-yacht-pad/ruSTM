@@ -1,5 +1,7 @@
+pub mod control_block;
+pub mod log_var;
+
 use std::collections::BTreeMap;
-use std::collections::btree_map::Entry::*;
 use std::mem;
 use std::sync::{Arc};
 use std::any::Any;
@@ -58,8 +60,7 @@ impl Transaction {
     pub fn read<T: Send + Sync + Any + Clone>(&mut self, var: &TVar<T>) -> StmResult<T> {
         let ctrl = var.control_block().clone();
         match self.writevars.get(&ctrl) {
-
-            Some(mut entry) => {let value = entry.clone();
+            Some(entry) => {let value = entry.clone();
                                     return Ok(Transaction::downcast(value));}
             None => { }
         }
@@ -74,7 +75,6 @@ impl Transaction {
         let value = var.read_ref_atomic();
         let ctrl = var.control_block().clone();
         self.readvars.insert(ctrl, value.clone());
-        //self.readvars.insert(ctrl, LogVar::Read(value.clone()));
         Ok(Transaction::downcast(value))
     }
 
@@ -107,7 +107,7 @@ impl Transaction {
                 match value { 
                         ref original => {
                         let lock = var.value.read().unwrap();
-                        if !same_address(&lock, original) {
+                        if !same_address(&lock, &original) {
                             mem::drop(read_vec);
                             return None;
                         }
@@ -121,7 +121,6 @@ impl Transaction {
             }
         }
     }
-
 
     fn commit(&mut self) -> bool {
         if self.writevars.is_empty() {
@@ -140,12 +139,11 @@ impl Transaction {
             match value {
                 ref val => {
                     let lock = var.value.write().unwrap();
-                    write_vec.push((var, val.clone(), lock));
+                    write_vec.push((val.clone(), lock));
                 }
             }
         }
-        for (var, value, mut lock) in write_vec {
-            // commit value
+        for (value, mut lock) in write_vec {
             *lock = value.clone();
         }
         GLOBAL_SEQ_LOCK.store(self.snapshot + 2, Ordering::SeqCst);
@@ -172,7 +170,6 @@ fn test_same_address_equal() {
     assert!(same_address(&t1, &t2));
 }
 
-/// Test same_address on differenc Arcs with same value
 #[test]
 fn test_same_address_different() {
     let t1 = Arc::new(42);
@@ -180,29 +177,6 @@ fn test_same_address_different() {
     
     assert!(!same_address(&t1, &t2));
 }
-
-// #[test]
-// fn test_read() {
-//     let mut log = Transaction::new();
-//     let var = TVar::new(vec![1, 2, 3, 4]);
-
-//     // the variable can be read
-//     assert_eq!(&*log.read(&var).unwrap(), &[1, 2, 3, 4]);
-// }
-
-    // #[test]
-    // fn test_write_read() {
-    //     let mut log = Transaction::new();
-    //     let var = TVar::new(vec![1, 2]);
-
-    //     log.write(&var, vec![1, 2, 3, 4]).unwrap();
-
-    //     // consecutive reads get the updated version
-    //     assert_eq!(log.read(&var).unwrap(), [1, 2, 3, 4]);
-
-    //     // the original value is still preserved
-    //     assert_eq!(var.read_atomic(), [1, 2]);
-    // }
 
 #[test]
 fn test_transaction_simple() {

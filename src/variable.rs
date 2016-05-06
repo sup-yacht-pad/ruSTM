@@ -1,7 +1,6 @@
 
-use std::sync::{Arc, Weak, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 use std::mem;
-use std::sync::atomic::{self, AtomicUsize};
 use std::cmp;
 use std::any::Any;
 use std::marker::PhantomData;
@@ -49,9 +48,6 @@ impl PartialOrd for VarControlBlock {
     }
 }
 
-
-
-/// A variable that can be used in a STM-Block
 #[derive(Clone)]
 pub struct TVar<T> {
     control_block: Arc<VarControlBlock>,
