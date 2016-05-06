@@ -27,7 +27,7 @@ impl Transaction {
         }
     }
 
-    pub fn with<T, F>(f: F) -> T 
+    pub fn run<T, F>(f: F) -> T 
     where F: Fn(&mut Transaction) -> StmResult<T>,
     {
         let mut ss = GLOBAL_SEQ_LOCK.load(Ordering::SeqCst);
@@ -104,11 +104,7 @@ impl Transaction {
             let vars = mem::replace(&mut self.readvars, BTreeMap::new());
             let mut read_vec = Vec::new();
             for (var, value) in &vars {
-                match value {
-                    // &Write(ref w) | &ReadObsoleteWrite(_,ref w) => { }
-                    // &ReadWrite(ref original,ref w) => { }
-                    // &ReadObsolete(_) => { }
-                    //&Read(ref original) 
+                match value { 
                         ref original => {
                         let lock = var.value.read().unwrap();
                         if !same_address(&lock, original) {
@@ -138,7 +134,6 @@ impl Transaction {
             }
         }
         let vars = mem::replace(&mut self.writevars, BTreeMap::new());
-        //let mut read_vec = Vec::new();
         let mut write_vec = Vec::new();
 
         for (var, value) in &vars {
@@ -147,54 +142,13 @@ impl Transaction {
                     let lock = var.value.write().unwrap();
                     write_vec.push((var, val.clone(), lock));
                 }
-                // // We need to take a write lock.
-                // &Write(ref w) | &ReadObsoleteWrite(_,ref w)=> {
-                //     // take write lock
-                //     let lock = var.value.write().unwrap();
-                //     // add all data to the vector
-                //     write_vec.push((var, w, lock));
-                // }
-                
-                // // We need to check for consistency and
-                // // take a write lock.
-                // &ReadWrite(ref original,ref w) => {
-                //     // take write lock
-                //     let lock = var.value.write().unwrap();
-
-                //     if !same_address(&lock, original) {
-                //         return false;
-                //     }
-                //     // add all data to the vector
-                //     write_vec.push((var, w, lock));
-                // }
-                // // Nothing to do. ReadObsolete is only needed for blocking, not
-                // // for consistency checks.
-                // &ReadObsolete(_) => { }
-                // // Take read lock and check for consistency.
-                // &Read(ref original) => {
-                //     // take a read lock
-                //     let lock = var.value.read().unwrap();
-
-                //     if !same_address(&lock, original) {
-                //         return false;
-                //     }
-
-                //     read_vec.push(lock);
-                // }
             }
         }
-
-        // Second phase: write back and release
-
-        // Release the reads first.
-        //mem::drop(read_vec);
-
         for (var, value, mut lock) in write_vec {
             // commit value
             *lock = value.clone();
         }
         GLOBAL_SEQ_LOCK.store(self.snapshot + 2, Ordering::SeqCst);
-        // commit succeded
         true
     }
 }
@@ -236,23 +190,23 @@ fn test_same_address_different() {
 //     assert_eq!(&*log.read(&var).unwrap(), &[1, 2, 3, 4]);
 // }
 
-// #[test]
-// fn test_write_read() {
-//     let mut log = Transaction::new();
-//     let var = TVar::new(vec![1, 2]);
+    // #[test]
+    // fn test_write_read() {
+    //     let mut log = Transaction::new();
+    //     let var = TVar::new(vec![1, 2]);
 
-//     log.write(&var, vec![1, 2, 3, 4]).unwrap();
+    //     log.write(&var, vec![1, 2, 3, 4]).unwrap();
 
-//     // consecutive reads get the updated version
-//     assert_eq!(log.read(&var).unwrap(), [1, 2, 3, 4]);
+    //     // consecutive reads get the updated version
+    //     assert_eq!(log.read(&var).unwrap(), [1, 2, 3, 4]);
 
-//     // the original value is still preserved
-//     assert_eq!(var.read_atomic(), [1, 2]);
-// }
+    //     // the original value is still preserved
+    //     assert_eq!(var.read_atomic(), [1, 2]);
+    // }
 
 #[test]
 fn test_transaction_simple() {
-    let x = Transaction::with(|_| Ok(42));
+    let x = Transaction::run(|_| Ok(42));
     assert_eq!(x, 42);
 }
 
@@ -260,7 +214,7 @@ fn test_transaction_simple() {
 fn test_transaction_read() {
     let read = TVar::new(42);
 
-    let x = Transaction::with(|trans| {
+    let x = Transaction::run(|trans| {
         read.read(trans)
     });
 
@@ -271,7 +225,7 @@ fn test_transaction_read() {
 fn test_transaction_write() {
     let write = TVar::new(42);
 
-    Transaction::with(|trans| {
+    Transaction::run(|trans| {
         write.write(trans, 0)
     });
 
@@ -283,7 +237,7 @@ fn test_transaction_copy() {
     let read = TVar::new(42);
     let write = TVar::new(0);
 
-    Transaction::with(|trans| {
+    Transaction::run(|trans| {
         let r = try!(read.read(trans));
         write.write(trans, r)
     });

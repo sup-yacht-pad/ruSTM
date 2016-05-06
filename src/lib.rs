@@ -11,25 +11,14 @@ pub use result::*;
 use std::sync::Arc;
 use std::thread;
 
-/// call `retry`, to abort an operation. It takes another path of an
-/// `Transaction::or` or blocks until any variable changes.
-///
-/// # Examples
-///
-/// ```no_run
-/// use stm::*;
-/// let infinite_retry: i32 = atomically(|_| retry());
-/// ```
 pub fn retry<T>() -> StmResult<T> {
     Err(StmError::Retry)
 }
 
-/// Run a function atomically by using Software Transactional Memory.
-/// It calls to `Transaction::with` internally, but is more explicit.
 pub fn atomically<T, F>(f: F) -> T
 where F: Fn(&mut Transaction) -> StmResult<T>
 {
-    Transaction::with(f)
+    Transaction::run(f)
 }
 
 #[test]
