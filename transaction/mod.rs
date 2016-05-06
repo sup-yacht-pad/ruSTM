@@ -1,4 +1,3 @@
-pub mod control_block;
 pub mod log_var;
 
 use std::collections::BTreeMap;
@@ -6,22 +5,21 @@ use std::collections::btree_map::Entry::*;
 use std::mem;
 use std::sync::{Arc};
 use std::any::Any;
-use std::cell::Cell;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 use self::log_var::LogVar;
 use self::log_var::LogVar::*;
-use self::control_block::ControlBlock;
 use super::var::{TVar, VarControlBlock};
 use super::result::*;
 use super::result::StmError::*;
 
-static GLOBAL_SEQ_LOCK: AtomicUsize = ATOMIC_USIZE_INIT;
+type ArcAny = Arc<Any + Send + Sync>;
 
+static GLOBAL_SEQ_LOCK: AtomicUsize = ATOMIC_USIZE_INIT;
 pub struct Transaction {
     snapshot: usize,
-    writevars: BTreeMap<Arc<VarControlBlock>, LogVar>,
-    readvars: BTreeMap<Arc<VarControlBlock>, LogVar>,
+    writevars: BTreeMap<Arc<VarControlBlock>, ArcAny>,
+    readvars: BTreeMap<Arc<VarControlBlock>, ArcAny>,
 }
 
 impl Transaction {
@@ -50,15 +48,11 @@ impl Transaction {
                     }
                 }
                 Err(_) => { }
-                // Err(Retry) => {
-                //     transaction.wait_for_change();
-                // }
             }
             transaction.clear();
         }
     }
 
-    /// Perform a downcast on a var.
     fn downcast<T: Any + Clone>(var: Arc<Any>) -> T {
         var.downcast_ref::<T>()
            .expect("Vars with different types and same address")
@@ -67,13 +61,11 @@ impl Transaction {
 
     pub fn read<T: Send + Sync + Any + Clone>(&mut self, var: &TVar<T>) -> StmResult<T> {
         let ctrl = var.control_block().clone();
-        // Check if the same var was written before.
-        match self.writevars.entry(ctrl) {
+        match self.writevars.get(&ctrl) {
 
-            Occupied(mut entry) => {let value = entry.get_mut().read();
+            Some(mut entry) => {let value = entry.clone();
                                     return Ok(Transaction::downcast(value));}
-
-            Vacant(entry) => { }
+            None => { }
         }
         while self.snapshot != GLOBAL_SEQ_LOCK.load(Ordering::SeqCst) {
             match self.validate() {
@@ -85,21 +77,15 @@ impl Transaction {
         }
         let value = var.read_ref_atomic();
         let ctrl = var.control_block().clone();
-        self.readvars.insert(ctrl, LogVar::Read(value.clone()));
+        self.readvars.insert(ctrl, value.clone());
+        //self.readvars.insert(ctrl, LogVar::Read(value.clone()));
         Ok(Transaction::downcast(value))
     }
 
-    /// Write a variable.
-    ///
-    /// `write` does not immediately change the value, but atomically
-    /// commits all writes at the end of the computation.
     pub fn write<T: Any + Send + Sync + Clone>(&mut self, var: &TVar<T>, value: T) -> StmResult<()> {
         let boxed = Arc::new(value);
         let ctrl = var.control_block().clone();
-        match self.writevars.entry(ctrl) {
-            Occupied(mut entry)     => entry.get_mut().write(boxed),
-            Vacant(entry)       => { entry.insert(LogVar::Write(boxed)); }
-        }
+        self.writevars.insert(ctrl, boxed);
         Ok(())
     }
 
@@ -123,10 +109,11 @@ impl Transaction {
             let mut read_vec = Vec::new();
             for (var, value) in &vars {
                 match value {
-                    &Write(ref w) | &ReadObsoleteWrite(_,ref w) => { }
-                    &ReadWrite(ref original,ref w) => { }
-                    &ReadObsolete(_) => { }
-                    &Read(ref original) => {
+                    // &Write(ref w) | &ReadObsoleteWrite(_,ref w) => { }
+                    // &ReadWrite(ref original,ref w) => { }
+                    // &ReadObsolete(_) => { }
+                    //&Read(ref original) 
+                        ref original => {
                         let lock = var.value.read().unwrap();
                         if !same_address(&lock, original) {
                             mem::drop(read_vec);
@@ -155,54 +142,56 @@ impl Transaction {
             }
         }
         let vars = mem::replace(&mut self.writevars, BTreeMap::new());
-        let mut read_vec = Vec::new();
+        //let mut read_vec = Vec::new();
         let mut write_vec = Vec::new();
 
         for (var, value) in &vars {
-            // lock the variable and read the value
-
             match value {
-                // We need to take a write lock.
-                &Write(ref w) | &ReadObsoleteWrite(_,ref w)=> {
-                    // take write lock
+                ref val => {
                     let lock = var.value.write().unwrap();
-                    // add all data to the vector
-                    write_vec.push((var, w, lock));
+                    write_vec.push((var, val.clone(), lock));
                 }
+                // // We need to take a write lock.
+                // &Write(ref w) | &ReadObsoleteWrite(_,ref w)=> {
+                //     // take write lock
+                //     let lock = var.value.write().unwrap();
+                //     // add all data to the vector
+                //     write_vec.push((var, w, lock));
+                // }
                 
-                // We need to check for consistency and
-                // take a write lock.
-                &ReadWrite(ref original,ref w) => {
-                    // take write lock
-                    let lock = var.value.write().unwrap();
+                // // We need to check for consistency and
+                // // take a write lock.
+                // &ReadWrite(ref original,ref w) => {
+                //     // take write lock
+                //     let lock = var.value.write().unwrap();
 
-                    if !same_address(&lock, original) {
-                        return false;
-                    }
-                    // add all data to the vector
-                    write_vec.push((var, w, lock));
-                }
-                // Nothing to do. ReadObsolete is only needed for blocking, not
-                // for consistency checks.
-                &ReadObsolete(_) => { }
-                // Take read lock and check for consistency.
-                &Read(ref original) => {
-                    // take a read lock
-                    let lock = var.value.read().unwrap();
+                //     if !same_address(&lock, original) {
+                //         return false;
+                //     }
+                //     // add all data to the vector
+                //     write_vec.push((var, w, lock));
+                // }
+                // // Nothing to do. ReadObsolete is only needed for blocking, not
+                // // for consistency checks.
+                // &ReadObsolete(_) => { }
+                // // Take read lock and check for consistency.
+                // &Read(ref original) => {
+                //     // take a read lock
+                //     let lock = var.value.read().unwrap();
 
-                    if !same_address(&lock, original) {
-                        return false;
-                    }
+                //     if !same_address(&lock, original) {
+                //         return false;
+                //     }
 
-                    read_vec.push(lock);
-                }
+                //     read_vec.push(lock);
+                // }
             }
         }
 
         // Second phase: write back and release
 
         // Release the reads first.
-        mem::drop(read_vec);
+        //mem::drop(read_vec);
 
         for (var, value, mut lock) in write_vec {
             // commit value
