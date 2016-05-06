@@ -12,7 +12,6 @@ pub struct VarControlBlock {
     pub value: RwLock<Arc<Any + Send + Sync>>,
 }
 
-
 impl VarControlBlock {
     pub fn new<T>(val: T) -> Arc<VarControlBlock>
         where T: Any + Sync + Send
