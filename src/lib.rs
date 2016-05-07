@@ -7,6 +7,9 @@ mod test;
 
 extern crate rand;
 
+#[macro_use]
+extern crate timeit;
+
 pub use variable::TVar;
 pub use transaction::Transaction;
 pub use result::*;
@@ -185,13 +188,12 @@ fn bst_insertion_backbone_small_with_all_collisions_seq() {
     for x in 0..15 {
         b.insert(x);
     }
-    for x in 0..10 {
+    timeit!({for x in 0..10 {
         b.insert(x + 15);
-    }
-    assert_eq!(b.size(), 25);
+    }});
 }
 
-//#[test]
+
 fn bst_insertion_backbone_small_with_all_collisions_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
@@ -212,10 +214,10 @@ fn bst_insertion_backbone_small_with_all_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().size(), 25);
+    //assert_eq!(var.read_atomic().size(), 25);
 }
 
-#[test]
+
 fn bst_insertion_backbone_small_with_all_collisions_single_lock() {
     let mut b = Bst::new();
     for x in 0..15 {
@@ -234,10 +236,10 @@ fn bst_insertion_backbone_small_with_all_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.size(), 25);
+    //assert_eq!(newl.size(), 25);
 }
 
-#[test]
+
 fn bst_insertion_backbone_medium_with_all_collisions_seq() {
     let mut b = Bst::new();
     for x in 0..75 {
@@ -246,10 +248,10 @@ fn bst_insertion_backbone_medium_with_all_collisions_seq() {
     for x in 0..10 {
         b.insert(x + 75);
     }
-    assert_eq!(b.size(), 85);
+    //assert_eq!(b.size(), 85);
 }
 
-//#[test]
+
 fn bst_insertion_backbone_medium_with_all_collisions_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
@@ -270,10 +272,10 @@ fn bst_insertion_backbone_medium_with_all_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().size(), 85);
+    //assert_eq!(var.read_atomic().size(), 85);
 }
 
-#[test]
+
 fn bst_insertion_backbone_medium_with_all_collisions_single_lock() {
     let mut b = Bst::new();
     for x in 0..75 {
@@ -292,10 +294,10 @@ fn bst_insertion_backbone_medium_with_all_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.size(), 85);
+    //assert_eq!(newl.size(), 85);
 }
 
-#[test]
+
 fn bst_insertion_backbone_large_with_all_collisions_seq() {
     let mut b = Bst::new();
     for x in 0..115 {
@@ -304,10 +306,10 @@ fn bst_insertion_backbone_large_with_all_collisions_seq() {
     for x in 0..10 {
         b.insert(x + 115);
     }
-    assert_eq!(b.size(), 125);
+    //assert_eq!(b.size(), 125);
 }
 
-//#[test]
+
 fn bst_insertion_backbone_large_with_all_collisions_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
@@ -328,10 +330,10 @@ fn bst_insertion_backbone_large_with_all_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().size(), 125);
+    //assert_eq!(var.read_atomic().size(), 125);
 }
 
-#[test]
+
 fn bst_insertion_backbone_large_with_all_collisions_single_lock() {
     let mut b = Bst::new();
     for x in 0..115 {
@@ -350,10 +352,10 @@ fn bst_insertion_backbone_large_with_all_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.size(), 125);
+    //assert_eq!(newl.size(), 125);
 }
 
-#[test]
+
 fn bst_insertion_backbone_small_with_half_collisions_seq() {
     let mut b = Bst::new();
     for x in 0..15 {
@@ -363,10 +365,10 @@ fn bst_insertion_backbone_small_with_half_collisions_seq() {
         let mut y = if x < 5 {x - 5} else {x + 15};
         b.insert(y);
     }
-    assert_eq!(b.size(), 25);
+    //assert_eq!(b.size(), 25);
 }
 
-//#[test]
+
 fn bst_insertion_backbone_small_with_half_collisions_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
@@ -388,10 +390,10 @@ fn bst_insertion_backbone_small_with_half_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().size(), 25);
+    //assert_eq!(var.read_atomic().size(), 25);
 }
 
-#[test]
+
 fn bst_insertion_backbone_small_with_half_collisions_single_lock() {
     let mut b = Bst::new();
     for x in 0..15 {
@@ -411,12 +413,12 @@ fn bst_insertion_backbone_small_with_half_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.size(), 25);
+    //assert_eq!(newl.size(), 25);
 }
 
 
 
-#[test]
+
 fn bst_insertion_backbone_medium_with_half_collisions_seq() {
     let mut b = Bst::new();
     for x in 0..75 {
@@ -426,10 +428,10 @@ fn bst_insertion_backbone_medium_with_half_collisions_seq() {
         let mut y = if x < 5 {x -5} else {x + 75};
         b.insert(y);
     }
-    assert_eq!(b.size(), 85);
+    //assert_eq!(b.size(), 85);
 }
 
-//#[test]
+
 fn bst_insertion_backbone_medium_with_half_collisions_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
@@ -451,10 +453,10 @@ fn bst_insertion_backbone_medium_with_half_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().size(), 85);
+    //assert_eq!(var.read_atomic().size(), 85);
 }
 
-#[test]
+
 fn bst_insertion_backbone_medium_with_half_collisions_single_lock() {
     let mut b = Bst::new();
     for x in 0..75 {
@@ -474,10 +476,10 @@ fn bst_insertion_backbone_medium_with_half_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.size(), 85);
+    //assert_eq!(newl.size(), 85);
 }
 
-#[test]
+
 fn bst_insertion_backbone_large_with_half_collisions_seq() {
     let mut b = Bst::new();
     for x in 0..115 {
@@ -487,10 +489,10 @@ fn bst_insertion_backbone_large_with_half_collisions_seq() {
         let mut y = if x < 5 {x -5} else {x + 115};
         b.insert(y);
     }
-    assert_eq!(b.size(), 125);
+    //assert_eq!(b.size(), 125);
 }
 
-//#[test]
+
 fn bst_insertion_backbone_large_with_half_collisions_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
@@ -512,10 +514,10 @@ fn bst_insertion_backbone_large_with_half_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().size(), 125);
+    //assert_eq!(var.read_atomic().size(), 125);
 }
 
-#[test]
+
 fn bst_insertion_backbone_large_with_half_collisions_single_lock() {
     let mut b = Bst::new();
     for x in 0..115 {
@@ -534,10 +536,10 @@ fn bst_insertion_backbone_large_with_half_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.size(), 125);
+    //assert_eq!(newl.size(), 125);
 }
 
-#[test]
+
 fn bst_insertion_backbone_small_with_no_collisions_seq() {
     let mut b = Bst::new();
     for x in 0..15 {
@@ -546,10 +548,10 @@ fn bst_insertion_backbone_small_with_no_collisions_seq() {
     for x in 0..10 {
         b.insert(x * 2 + 1);
     }
-    assert_eq!(b.size(), 25);
+    //assert_eq!(b.size(), 25);
 }
 
-//#[test]
+
 fn bst_insertion_backbone_small_with_no_collisions_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
@@ -570,10 +572,10 @@ fn bst_insertion_backbone_small_with_no_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().size(), 25);
+    //assert_eq!(var.read_atomic().size(), 25);
 }
 
-#[test]
+
 fn bst_insertion_backbone_small_with_no_collisions_single_lock() {
     let mut b = Bst::new();
     for x in 0..15 {
@@ -592,12 +594,12 @@ fn bst_insertion_backbone_small_with_no_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.size(), 25);
+    //assert_eq!(newl.size(), 25);
 }
 
 
 
-#[test]
+
 fn bst_insertion_backbone_medium_with_no_collisions_seq() {
     let mut b = Bst::new();
     for x in 0..75 {
@@ -606,10 +608,10 @@ fn bst_insertion_backbone_medium_with_no_collisions_seq() {
     for x in 0..10 {
         b.insert(x * 2 + 1);
     }
-    assert_eq!(b.size(), 85);
+    //assert_eq!(b.size(), 85);
 }
 
-//#[test]
+
 fn bst_insertion_backbone_medium_with_no_collisions_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
@@ -630,10 +632,10 @@ fn bst_insertion_backbone_medium_with_no_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().size(), 85);
+    //assert_eq!(var.read_atomic().size(), 85);
 }
 
-#[test]
+
 fn bst_insertion_backbone_medium_with_no_collisions_single_lock() {
     let mut b = Bst::new();
     for x in 0..75 {
@@ -652,10 +654,10 @@ fn bst_insertion_backbone_medium_with_no_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.size(), 85);
+    //assert_eq!(newl.size(), 85);
 }
 
-#[test]
+
 fn bst_insertion_backbone_large_with_no_collisions_seq() {
     let mut b = Bst::new();
     for x in 0..115 {
@@ -664,10 +666,10 @@ fn bst_insertion_backbone_large_with_no_collisions_seq() {
     for x in 0..10 {
         b.insert(x * 2 + 1);
     }
-    assert_eq!(b.size(), 125);
+    //assert_eq!(b.size(), 125);
 }
 
-//#[test]
+
 fn bst_insertion_backbone_large_with_no_collisions_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
@@ -688,10 +690,10 @@ fn bst_insertion_backbone_large_with_no_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().size(), 125);
+    //assert_eq!(var.read_atomic().size(), 125);
 }
 
-#[test]
+
 fn bst_insertion_backbone_large_with_no_collisions_single_lock() {
     let mut b = Bst::new();
     for x in 0..115 {
@@ -710,11 +712,11 @@ fn bst_insertion_backbone_large_with_no_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.size(), 125);
+    //assert_eq!(newl.size(), 125);
 }
 
 
-#[test]
+
 fn bst_insertion_random_small_seq() {
     let mut b = Bst::new();
     let mut rng = thread_rng();
@@ -726,7 +728,7 @@ fn bst_insertion_random_small_seq() {
     }
 }
 
-//#[test]
+
 fn bst_insertion_random_small_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
@@ -751,7 +753,7 @@ fn bst_insertion_random_small_stm() {
     }
 }
 
-#[test]
+
 fn bst_insertion_random_small_single_lock() {
     let mut b = Bst::new();
     let mut rng = thread_rng();
@@ -773,7 +775,7 @@ fn bst_insertion_random_small_single_lock() {
     }
 }
 
-#[test]
+
 fn bst_insertion_random_medium_seq() {
     let mut b = Bst::new();
     let mut rng = thread_rng();
@@ -785,7 +787,7 @@ fn bst_insertion_random_medium_seq() {
     }
 }
 
-//#[test]
+
 fn bst_insertion_random_medium_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
@@ -810,7 +812,7 @@ fn bst_insertion_random_medium_stm() {
     }
 }
 
-#[test]
+
 fn bst_insertion_random_medium_single_lock() {
     let mut b = Bst::new();
     let mut rng = thread_rng();
@@ -832,7 +834,7 @@ fn bst_insertion_random_medium_single_lock() {
     }
 }
 
-#[test]
+
 fn bst_insertion_random_large_seq() {
     let mut b = Bst::new();
     let mut rng = thread_rng();
@@ -845,7 +847,7 @@ fn bst_insertion_random_large_seq() {
     }
 }
 
-//#[test]
+
 fn bst_insertion_random_large_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
@@ -870,7 +872,7 @@ fn bst_insertion_random_large_stm() {
     }
 }
 
-#[test]
+
 fn bst_insertion_random_large_single_lock() {
     let mut b = Bst::new();
     let mut rng = thread_rng();
@@ -892,7 +894,7 @@ fn bst_insertion_random_large_single_lock() {
     }
 }
 
-#[test]
+
 fn ll_insertion_small_with_all_collisions_seq() {
     let mut l = Ll::new();
     for x in 0..15 {
@@ -901,10 +903,10 @@ fn ll_insertion_small_with_all_collisions_seq() {
     for x in 0..10 {
         l.insert(x + 15);
     }
-    assert_eq!(l.len(), 25);
+    //assert_eq!(l.len(), 25);
 }
 
-#[test]
+
 fn ll_insertion_small_with_all_collisions_stm() {
     let mut children = vec![];
     let mut l = Ll::new();
@@ -925,10 +927,10 @@ fn ll_insertion_small_with_all_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().len(), 25);
+    //assert_eq!(var.read_atomic().len(), 25);
 }
 
-#[test]
+
 fn ll_insertion_small_with_all_collisions_single_lock() {
     let mut ll = Ll::new();
     for x in 0..15 {
@@ -947,10 +949,10 @@ fn ll_insertion_small_with_all_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.len(), 25);
+    //assert_eq!(newl.len(), 25);
 }
 
-#[test]
+
 fn ll_insertion_medium_with_all_collisions_seq() {
     let mut l = Ll::new();
     for x in 0..75 {
@@ -959,10 +961,10 @@ fn ll_insertion_medium_with_all_collisions_seq() {
     for x in 0..10 {
         l.insert(x + 75);
     }
-    assert_eq!(l.len(), 85);
+    //assert_eq!(l.len(), 85);
 }
 
-#[test]
+
 fn ll_insertion_medium_with_all_collisions_stm() {
     let mut children = vec![];
     let mut l = Ll::new();
@@ -983,10 +985,10 @@ fn ll_insertion_medium_with_all_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().len(), 85);
+    //assert_eq!(var.read_atomic().len(), 85);
 }
 
-#[test]
+
 fn ll_insertion_medium_with_all_collisions_single_lock() {
     let mut ll = Ll::new();
     for x in 0..75 {
@@ -1005,10 +1007,10 @@ fn ll_insertion_medium_with_all_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.len(), 85);
+    //assert_eq!(newl.len(), 85);
 }
 
-#[test]
+
 fn ll_insertion_large_with_all_collisions_seq() {
     let mut l = Ll::new();
     for x in 0..115 {
@@ -1017,10 +1019,10 @@ fn ll_insertion_large_with_all_collisions_seq() {
     for x in 0..10 {
         l.insert(x + 115);
     }
-    assert_eq!(l.len(), 125);
+    //assert_eq!(l.len(), 125);
 }
 
-#[test]
+
 fn ll_insertion_large_with_all_collisions_stm() {
     let mut children = vec![];
     let mut l = Ll::new();
@@ -1041,10 +1043,10 @@ fn ll_insertion_large_with_all_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().len(), 125);
+    //assert_eq!(var.read_atomic().len(), 125);
 }
 
-#[test]
+
 fn ll_insertion_large_with_all_collisions_single_lock() {
     let mut ll = Ll::new();
     for x in 0..115 {
@@ -1063,10 +1065,10 @@ fn ll_insertion_large_with_all_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.len(), 125);
+    //assert_eq!(newl.len(), 125);
 }
 
-#[test]
+
 fn ll_insertion_small_with_half_collisions_seq() {
     let mut l = Ll::new();
     for x in 0..15 {
@@ -1076,10 +1078,10 @@ fn ll_insertion_small_with_half_collisions_seq() {
         let y = if x < 5 {x - 5} else {x + 15};
         l.insert(y);
     }
-    assert_eq!(l.len(), 25);
+    //assert_eq!(l.len(), 25);
 }
 
-#[test]
+
 fn ll_insertion_small_with_half_collisions_stm() {
     let mut children = vec![];
     let mut l = Ll::new();
@@ -1101,10 +1103,10 @@ fn ll_insertion_small_with_half_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().len(), 25);
+    //assert_eq!(var.read_atomic().len(), 25);
 }
 
-#[test]
+
 fn ll_insertion_small_with_half_collisions_single_lock() {
     let mut ll = Ll::new();
     for x in 0..15 {
@@ -1124,10 +1126,10 @@ fn ll_insertion_small_with_half_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.len(), 25);
+    //assert_eq!(newl.len(), 25);
 }
 
-#[test]
+
 fn ll_insertion_medium_with_half_collisions_seq() {
     let mut l = Ll::new();
     for x in 0..75 {
@@ -1137,10 +1139,10 @@ fn ll_insertion_medium_with_half_collisions_seq() {
         let y = if x < 5 {x - 5} else {x + 75};
         l.insert(y);
     }
-    assert_eq!(l.len(), 85);
+    //assert_eq!(l.len(), 85);
 }
 
-#[test]
+
 fn ll_insertion_medium_with_half_collisions_stm() {
     let mut children = vec![];
     let mut l = Ll::new();
@@ -1162,10 +1164,10 @@ fn ll_insertion_medium_with_half_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().len(), 85);
+    //assert_eq!(var.read_atomic().len(), 85);
 }
 
-#[test]
+
 fn ll_insertion_medium_with_half_collisions_single_lock() {
     let mut ll = Ll::new();
     for x in 0..75 {
@@ -1185,10 +1187,10 @@ fn ll_insertion_medium_with_half_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.len(), 85);
+    //assert_eq!(newl.len(), 85);
 }
 
-#[test]
+
 fn ll_insertion_large_with_half_collisions_seq() {
     let mut l = Ll::new();
     for x in 0..115 {
@@ -1198,10 +1200,10 @@ fn ll_insertion_large_with_half_collisions_seq() {
         let y = if x < 5 {x - 5} else {x + 115};
         l.insert(y);
     }
-    assert_eq!(l.len(), 125);
+    //assert_eq!(l.len(), 125);
 }
 
-#[test]
+
 fn ll_insertion_large_with_half_collisions_stm() {
     let mut children = vec![];
     let mut l = Ll::new();
@@ -1223,10 +1225,10 @@ fn ll_insertion_large_with_half_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().len(), 125);
+    //assert_eq!(var.read_atomic().len(), 125);
 }
 
-#[test]
+
 fn ll_insertion_large_with_half_collisions_single_lock() {
     let mut ll = Ll::new();
     for x in 0..115 {
@@ -1246,10 +1248,10 @@ fn ll_insertion_large_with_half_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.len(), 125);
+    //assert_eq!(newl.len(), 125);
 }
 
-#[test]
+
 fn ll_insertion_small_with_no_collisions_seq() {
     let mut l = Ll::new();
     for x in 0..15 {
@@ -1258,10 +1260,10 @@ fn ll_insertion_small_with_no_collisions_seq() {
     for x in 0..10 {
         l.insert(x * 2  + 1);
     }
-    assert_eq!(l.len(), 25);
+    //assert_eq!(l.len(), 25);
 }
 
-#[test]
+
 fn ll_insertion_small_with_no_collisions_stm() {
     let mut children = vec![];
     let mut l = Ll::new();
@@ -1282,10 +1284,10 @@ fn ll_insertion_small_with_no_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().len(), 25);
+    //assert_eq!(var.read_atomic().len(), 25);
 }
 
-#[test]
+
 fn ll_insertion_small_with_no_collisions_single_lock() {
     let mut ll = Ll::new();
     for x in 0..15 {
@@ -1304,10 +1306,10 @@ fn ll_insertion_small_with_no_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.len(), 25);
+    //assert_eq!(newl.len(), 25);
 }
 
-#[test]
+
 fn ll_insertion_medium_with_no_collisions_seq() {
     let mut l = Ll::new();
     for x in 0..75 {
@@ -1316,10 +1318,10 @@ fn ll_insertion_medium_with_no_collisions_seq() {
     for x in 0..10 {
         l.insert(x * 2  + 1);
     }
-    assert_eq!(l.len(), 85);
+    //assert_eq!(l.len(), 85);
 }
 
-#[test]
+
 fn ll_insertion_medium_with_no_collisions_stm() {
     let mut children = vec![];
     let mut l = Ll::new();
@@ -1340,10 +1342,10 @@ fn ll_insertion_medium_with_no_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().len(), 85);
+    //assert_eq!(var.read_atomic().len(), 85);
 }
 
-#[test]
+
 fn ll_insertion_medium_with_no_collisions_single_lock() {
     let mut ll = Ll::new();
     for x in 0..75 {
@@ -1362,10 +1364,10 @@ fn ll_insertion_medium_with_no_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.len(), 85);
+    //assert_eq!(newl.len(), 85);
 }
 
-#[test]
+
 fn ll_insertion_large_with_no_collisions_seq() {
     let mut l = Ll::new();
     for x in 0..115 {
@@ -1374,10 +1376,10 @@ fn ll_insertion_large_with_no_collisions_seq() {
     for x in 0..10 {
         l.insert(x * 2  + 1);
     }
-    assert_eq!(l.len(), 125);
+    //assert_eq!(l.len(), 125);
 }
 
-#[test]
+
 fn ll_insertion_large_with_no_collisions_stm() {
     let mut children = vec![];
     let mut l = Ll::new();
@@ -1398,10 +1400,10 @@ fn ll_insertion_large_with_no_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
-    assert_eq!(var.read_atomic().len(), 125);
+    //assert_eq!(var.read_atomic().len(), 125);
 }
 
-#[test]
+
 fn ll_insertion_large_with_no_collisions_single_lock() {
     let mut ll = Ll::new();
     for x in 0..115 {
@@ -1420,5 +1422,185 @@ fn ll_insertion_large_with_no_collisions_single_lock() {
         let _ = child.join();
     }
     let mut newl = l.lock().unwrap();
-    assert_eq!(newl.len(), 125);
+    //assert_eq!(newl.len(), 125);
+}
+
+
+fn ll_insertion_random_small_seq() {
+    let mut ll = Ll::new();
+    let mut rng = thread_rng();
+    for x in 0..15 {
+        ll.insert(rng.gen_range(0, 38));
+    }
+    let mut rng = thread_rng();
+    for x in 0..10 {
+        ll.insert(rng.gen_range(0, 38));
+    }
+}
+
+
+fn ll_insertion_random_small_stm() {
+    let mut children = vec![];
+    let mut ll = Ll::new();
+    let mut rng = thread_rng();
+    for x in 0..15 {
+        ll.insert(rng.gen_range(0, 38));
+    }
+    let var = TVar::new(ll);
+    for x in 0..10 {
+        let newvar = var.clone();
+        children.push(thread::spawn(move || {
+            atomically(|trans| {
+             let mut rng = thread_rng();
+             let mut cur = try!(newvar.read(trans));
+             cur.insert(rng.gen_range(0, 38));
+             newvar.write(trans, cur)
+            });
+        }));
+    }
+    for child in children {
+        let _ = child.join();
+    }
+}
+
+
+fn ll_insertion_random_small_single_lock() {
+    let mut ll = Ll::new();
+    let mut rng = thread_rng();
+    for x in 0..15 {
+        ll.insert(rng.gen_range(0, 38));
+    }
+    let l = Arc::new(Mutex::new(ll));
+    let mut children = vec![];
+    for x in 0..10 {
+        let data = l.clone();
+        children.push(thread::spawn(move || {
+        let mut rng = thread_rng();
+        let mut newb = data.lock().unwrap();
+        newb.insert(rng.gen_range(0, 38));
+        }));
+    }
+    for child in children {
+        let _ = child.join();
+    }
+}
+
+
+fn ll_insertion_random_medium_seq() {
+    let mut ll = Ll::new();
+    let mut rng = thread_rng();
+    for x in 0..75 {
+        ll.insert(rng.gen_range(0, 130));
+    }
+    let mut rng = thread_rng();
+    for x in 0..10 {
+        ll.insert(rng.gen_range(0, 130));
+    }
+}
+
+
+fn ll_insertion_random_medium_stm() {
+    let mut children = vec![];
+    let mut ll = Ll::new();
+    let mut rng = thread_rng();
+    for x in 0..75 {
+        ll.insert(rng.gen_range(0, 130));
+    }
+    let var = TVar::new(ll);
+    for x in 0..10 {
+        let newvar = var.clone();
+        children.push(thread::spawn(move || {
+            atomically(|trans| {
+             let mut rng = thread_rng();
+             let mut cur = try!(newvar.read(trans));
+             cur.insert(rng.gen_range(0, 130));
+             newvar.write(trans, cur)
+            });
+        }));
+    }
+    for child in children {
+        let _ = child.join();
+    }
+}
+
+
+fn ll_insertion_random_medium_single_lock() {
+    let mut ll = Ll::new();
+    let mut rng = thread_rng();
+    for x in 0..75 {
+        ll.insert(rng.gen_range(0, 130));
+    }
+    let l = Arc::new(Mutex::new(ll));
+    let mut children = vec![];
+    for x in 0..10 {
+        let data = l.clone();
+        children.push(thread::spawn(move || {
+        let mut rng = thread_rng();
+        let mut newb = data.lock().unwrap();
+        newb.insert(rng.gen_range(0, 130));
+        }));
+    }
+    for child in children {
+        let _ = child.join();
+    }
+}
+
+
+fn ll_insertion_random_large_seq() {
+    let mut ll = Ll::new();
+    let mut rng = thread_rng();
+    for x in 0..115 {
+        ll.insert(rng.gen_range(0, 190));
+    }
+    let mut rng = thread_rng();
+    for x in 0..10 {
+        ll.insert(rng.gen_range(0, 190));
+    }
+}
+
+
+fn ll_insertion_random_large_stm() {
+    let mut children = vec![];
+    let mut ll = Ll::new();
+    let mut rng = thread_rng();
+    for x in 0..115 {
+        ll.insert(rng.gen_range(0, 190));
+    }
+    let var = TVar::new(ll);
+    for x in 0..10 {
+        let newvar = var.clone();
+        children.push(thread::spawn(move || {
+            atomically(|trans| {
+             let mut rng = thread_rng();
+             let mut cur = try!(newvar.read(trans));
+             cur.insert(rng.gen_range(0, 190));
+             newvar.write(trans, cur)
+            });
+        }));
+    }
+    for child in children {
+        let _ = child.join();
+    }
+}
+
+
+fn ll_insertion_random_large_single_lock() {
+    let mut ll = Ll::new();
+    let mut rng = thread_rng();
+    for x in 0..115 {
+        ll.insert(rng.gen_range(0, 190));
+    }
+    let l = Arc::new(Mutex::new(ll));
+    let mut children = vec![];
+    for x in 0..10 {
+        let data = l.clone();
+        children.push(thread::spawn(move || {
+        let mut rng = thread_rng();
+        let mut newb = data.lock().unwrap();
+        newb.insert(rng.gen_range(0, 190));
+        }));
+    }
+    for child in children {
+        let _ = child.join();
+    }
 }
