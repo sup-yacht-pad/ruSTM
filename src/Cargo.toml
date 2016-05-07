@@ -7,7 +7,7 @@ authors = ["Xue An Chuang <xchuang@andrew.cmu.edu>",
 license = "MIT"
 
 [dependencies]
-
+rand = "0.3"
 
 [lib]
 path = "lib.rs"

@@ -97,11 +97,3 @@ impl LogVar {
         }
     }
 }
-
-/// Test if writes are ignored, when a var is set to obsolete
-#[test]
-fn test_write_obsolete_ignore() {
-    let t = LogVar::Write(Arc::new(42)).obsolete();
-    assert!(t.is_none());
-}
-

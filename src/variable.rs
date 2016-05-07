@@ -92,12 +92,3 @@ impl<T> TVar<T>
         &self.control_block
     }
 }
-
-
-/// test if a waiting and waking of threads works
-#[test]
-fn test_read_atomic() {
-    let var = TVar::new(42);
-
-    assert_eq!(42, var.read_atomic());
-}
