@@ -133,13 +133,22 @@ fn test_simple() {
 #[derive(PartialEq)]
 #[derive(Clone)]
 #[derive(Debug)]
-struct Node<'a> {
-    val: &'a str,
-    l: Option<Box<Node<'a>>>,
-    r: Option<Box<Node<'a>>>,
+struct Node {
+    val: i32,
+    l: Option<Box<Node>>,
+    r: Option<Box<Node>>,
 }
-impl<'a> Node<'a> {
-    pub fn insert(&mut self, new_val: &'a str) {
+
+impl Node {
+    fn new(new_val: i32) -> Node {
+        Node {
+            val: new_val,
+            l: None,
+            r: None,
+        }
+    }
+
+    fn insert(&mut self, new_val: i32) {
         if self.val == new_val {
             return
         }
@@ -154,7 +163,7 @@ impl<'a> Node<'a> {
         }
     }
 
-    pub fn size(&mut self) -> i32 {
+    fn size(&mut self) -> i32 {
         match (&mut self.l, &mut self.r) {
             (&mut None, &mut None) => 1,
             (&mut Some(ref mut subnodel), &mut Some(ref mut subnoder))=> subnodel.size() + subnoder.size() + 1,
@@ -167,63 +176,36 @@ impl<'a> Node<'a> {
 #[derive(PartialEq)]
 #[derive(Clone)]
 #[derive(Debug)]
-struct Nodei32 {
-    val: i32,
-    l: Option<Box<Nodei32>>,
-    r: Option<Box<Nodei32>>,
+struct Bst {
+    root: Option<Box<Node>>,
 }
-impl Nodei32 {
+
+impl Bst {
+    pub fn new() -> Bst {
+        Bst { root: None }
+    }
+
     pub fn insert(&mut self, new_val: i32) {
-        if self.val == new_val {
-            return
-        }
-        let target_node = if new_val < self.val { &mut self.l } else { &mut self.r };
-        match target_node {
-            &mut Some(ref mut subnode) => subnode.insert(new_val),
-            &mut None => {
-                let new_node = Nodei32 { val: new_val, l: None, r: None };
-                let boxed_node = Some(Box::new(new_node));
-                *target_node = boxed_node;
-            }
+        match self.root {
+            None => self.root = Some(Box::new(Node::new(new_val))),
+            Some(ref mut r) => r.insert(new_val),
         }
     }
 
     pub fn size(&mut self) -> i32 {
-        match (&mut self.l, &mut self.r) {
-            (&mut None, &mut None) => 1,
-            (&mut Some(ref mut subnodel), &mut Some(ref mut subnoder))=> subnodel.size() + subnoder.size() + 1,
-            (&mut None, &mut Some(ref mut subnoder))=> subnoder.size() + 1,
-            (&mut Some(ref mut subnodel), &mut None)=> subnodel.size() + 1,
+        match self.root {
+            None => 0,
+            Some(ref mut subnode) => subnode.size(),
         }
     }
-}
-
-#[test]
-fn test_tree_insertion() {
-    let var = TVar::new(Node { val: "m", l: None, r: None });
-    let x = atomically(|trans| {
-     let mut y = try!(var.read(trans));
-     y.insert("z");
-     y.insert("b");
-     y.insert("c");
-     try!(var.write(trans, y));
-     var.read(trans) // return the value saved in var
-    });
-    assert_eq!(x, Node {
-        val: "m",
-        l: Some(Box::new(Node {
-            val: "b",
-            l: None,
-            r: Some(Box::new(Node { val: "c", l: None, r: None })),
-        })),
-        r: Some(Box::new(Node { val: "z", l: None, r: None })),
-    });
 }
 
 #[test]
 fn test_another_tree_insertion() {
     let mut children = vec![];
-    let var = TVar::new(Nodei32 { val: 5, l: None, r: None });
+    let mut b = Bst::new();
+    b.insert(5);
+    let var = TVar::new(b);
     for x in 0..10 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
@@ -242,23 +224,22 @@ fn test_another_tree_insertion() {
     println!("This is the size of the tree after STM insertions: {}", var.read_atomic().size());
 }
 
-//the below insertion function is wrong as each thread clone and does stupid things
 #[test]
 fn test_another_tree_insertion_with_single_lock() {
-    let l = Arc::new(Mutex::new(0));
+    let b = Bst::new();
+    let l = Arc::new(Mutex::new(b));
     let mut children = vec![];
-    let mut var = Nodei32 { val: 5, l: None, r: None };
     for x in 0..10 {
         let data = l.clone();
-        let mut newvar = var.clone();
         children.push(thread::spawn(move || {
-        data.lock().unwrap();
-        newvar.insert(x);
-        println!("Inserting this value : {}", x);
+        let mut newb = data.lock().unwrap();
+        newb.insert(x);
+        println!("Inserting this value for global lock : {}", x);
         }));
     }
     for child in children {
         let _ = child.join();
     }
-    println!("This is the size of the tree after single lock insertions: {}", var.size());
+    let mut newl = l.lock().unwrap();
+    println!("This is the size of the tree after single lock insertions: {}", newl.size());
 }
