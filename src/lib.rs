@@ -11,10 +11,11 @@ extern crate time;
 pub use variable::TVar;
 pub use transaction::Transaction;
 pub use result::*;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
 use rand::{thread_rng, Rng};
 use time::*;
+use std::mem;
 
 pub fn retry<T>() -> StmResult<T> {
     Err(StmError::Retry)
@@ -1931,4 +1932,117 @@ fn ll_insertion_random_large_single_lock() {
     }
     let end = PreciseTime::now();
     println!("{} seconds for whatever you did.", start.to(end));
+}
+
+#[derive(Clone)]
+#[derive(Debug)]
+struct LlNodeH {
+    val: i32,
+    next: Option<Box<LlNodeH>>,
+    m: Arc<Mutex<u8>>,
+}
+
+impl PartialEq for LlNodeH {
+    fn eq(&self, other: &LlNodeH) -> bool {
+        self.val == other.val && self.next == other.next
+    }
+}
+
+impl LlNodeH {
+    fn new(new_val: i32) -> LlNodeH {
+        LlNodeH {
+            val: new_val,
+            next: None,
+            m: Arc::new(Mutex::new(42)),
+        }
+    }
+
+    fn insert(&mut self, new_val: i32) {
+        self.insert_(new_val, None)
+    }
+
+    fn insert_(&mut self, new_val: i32, prev_lock: Option<MutexGuard<u8>>) {
+        if self.val == new_val {
+            return;
+        }
+        let prev_lock = self.m.lock().unwrap();
+        let target_node = &mut self.next;
+        let (new, flag) = match target_node {
+            &mut Some(ref mut r) => {
+                let curr_lock = self.m.lock().unwrap();
+                let cmp = r.val;
+                let retval = if cmp > new_val {
+                    let mut new = LlNodeH::new(new_val);
+                    new.next = Some(Box::new(*(r.clone())));
+                    let mut newer = Some(Box::new(new));
+                    (newer, true)
+                } else {
+                    mem::drop(prev_lock);
+                    r.insert_(new_val, Some(curr_lock));
+                    (Some(Box::new(LlNodeH::new(0))), false)
+                };
+                retval
+            }
+            &mut None => {
+                let boxed_node = Some(Box::new(LlNodeH::new(new_val)));
+                (boxed_node, true)
+            }
+        };
+        if flag {
+            *target_node = new
+        } else {
+            ()
+        };
+    }
+
+    fn len(&mut self) -> i32 {
+        match &mut self.next {
+            &mut None => 1,
+            &mut Some(ref mut subnode) => subnode.len() + 1,
+        }
+    }
+}
+
+#[derive(PartialEq)]
+#[derive(Clone)]
+#[derive(Debug)]
+struct LlH {
+    root: Option<Box<LlNodeH>>,
+}
+
+impl LlH {
+    pub fn new() -> LlH {
+        LlH { root: None }
+    }
+
+    pub fn insert(&mut self, new_val: i32) {
+        let (new, flag) = match self.root {
+            None => (Some(Box::new(LlNodeH::new(new_val))), true),
+            Some(ref mut r) => {
+                let cmp = r.val;
+                let retval = if cmp > new_val {
+                    let mut new = LlNodeH::new(new_val);
+                    new.next = Some(Box::new(*(r.clone())));
+                    let mut newer = Some(Box::new(new));
+                    (newer, true)
+                } else {
+                    r.insert(new_val);
+                    (Some(Box::new(LlNodeH::new(0))), false)
+                };
+                retval
+            }
+        };
+        if flag {
+            self.root = new
+        } else {
+            ()
+        };
+    }
+
+    pub fn len(&mut self) -> i32 {
+        match self.root {
+            None => 0,
+            Some(ref mut subnode) => subnode.len(),
+        }
+    }
 }
