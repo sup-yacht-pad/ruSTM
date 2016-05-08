@@ -6,6 +6,8 @@ mod result;
 mod test;
 
 extern crate rand;
+extern crate hprof;
+extern crate time;  
 
 #[macro_use]
 extern crate timeit;
@@ -16,6 +18,8 @@ pub use result::*;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use rand::{thread_rng, Rng};
+use hprof::*;
+use time::*;
 
 pub fn retry<T>() -> StmResult<T> {
     Err(StmError::Retry)
@@ -182,17 +186,15 @@ impl Ll {
 
 //small shall be defined as <50 nodes, medium as 50-100 and large as >100 nodes
 
-#[test]
 fn bst_insertion_backbone_small_with_all_collisions_seq() {
     let mut b = Bst::new();
     for x in 0..15 {
         b.insert(x);
     }
-    timeit!({for x in 0..10 {
+    for x in 0..96 {
         b.insert(x + 15);
-    }});
+    }
 }
-
 
 fn bst_insertion_backbone_small_with_all_collisions_stm() {
     let mut children = vec![];
@@ -201,7 +203,8 @@ fn bst_insertion_backbone_small_with_all_collisions_stm() {
         b.insert(x);
     }
     let var = TVar::new(b);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
@@ -214,9 +217,10 @@ fn bst_insertion_backbone_small_with_all_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(var.read_atomic().size(), 25);
 }
-
 
 fn bst_insertion_backbone_small_with_all_collisions_single_lock() {
     let mut b = Bst::new();
@@ -225,7 +229,8 @@ fn bst_insertion_backbone_small_with_all_collisions_single_lock() {
     }
     let l = Arc::new(Mutex::new(b));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
@@ -235,19 +240,23 @@ fn bst_insertion_backbone_small_with_all_collisions_single_lock() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     let mut newl = l.lock().unwrap();
     //assert_eq!(newl.size(), 25);
 }
 
-
 fn bst_insertion_backbone_medium_with_all_collisions_seq() {
     let mut b = Bst::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         b.insert(x);
     }
-    for x in 0..10 {
-        b.insert(x + 75);
+    let start = PreciseTime::now();
+    for x in 0..96 {
+        b.insert(x + 1000);
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(b.size(), 85);
 }
 
@@ -255,16 +264,17 @@ fn bst_insertion_backbone_medium_with_all_collisions_seq() {
 fn bst_insertion_backbone_medium_with_all_collisions_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         b.insert(x);
     }
     let var = TVar::new(b);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
              let mut cur = try!(newvar.read(trans));
-             cur.insert(x + 75);
+             cur.insert(x + 1000);
              newvar.write(trans, cur)
             });
         }));
@@ -272,27 +282,32 @@ fn bst_insertion_backbone_medium_with_all_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(var.read_atomic().size(), 85);
 }
 
 
 fn bst_insertion_backbone_medium_with_all_collisions_single_lock() {
     let mut b = Bst::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         b.insert(x);
     }
     let l = Arc::new(Mutex::new(b));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
-        newb.insert(x + 75);
+        newb.insert(x + 1000);
         }));
     }
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     let mut newl = l.lock().unwrap();
     //assert_eq!(newl.size(), 85);
 }
@@ -300,12 +315,15 @@ fn bst_insertion_backbone_medium_with_all_collisions_single_lock() {
 
 fn bst_insertion_backbone_large_with_all_collisions_seq() {
     let mut b = Bst::new();
-    for x in 0..115 {
+    for x in 0..5000 {
         b.insert(x);
     }
-    for x in 0..10 {
-        b.insert(x + 115);
+    let start = PreciseTime::now();
+    for x in 0..96 {
+        b.insert(x + 5000);
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(b.size(), 125);
 }
 
@@ -313,16 +331,17 @@ fn bst_insertion_backbone_large_with_all_collisions_seq() {
 fn bst_insertion_backbone_large_with_all_collisions_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
-    for x in 0..115 {
+    for x in 0..5000 {
         b.insert(x);
     }
     let var = TVar::new(b);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
              let mut cur = try!(newvar.read(trans));
-             cur.insert(x + 115);
+             cur.insert(x + 5000);
              newvar.write(trans, cur)
             });
         }));
@@ -330,27 +349,32 @@ fn bst_insertion_backbone_large_with_all_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(var.read_atomic().size(), 125);
 }
 
 
 fn bst_insertion_backbone_large_with_all_collisions_single_lock() {
     let mut b = Bst::new();
-    for x in 0..115 {
+    for x in 0..5000 {
         b.insert(x);
     }
     let l = Arc::new(Mutex::new(b));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
-        newb.insert(x + 115);
+        newb.insert(x + 5000);
         }));
     }
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     let mut newl = l.lock().unwrap();
     //assert_eq!(newl.size(), 125);
 }
@@ -361,13 +385,15 @@ fn bst_insertion_backbone_small_with_half_collisions_seq() {
     for x in 0..15 {
         b.insert(x);
     }
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let mut y = if x < 5 {x - 5} else {x + 15};
         b.insert(y);
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(b.size(), 25);
 }
-
 
 fn bst_insertion_backbone_small_with_half_collisions_stm() {
     let mut children = vec![];
@@ -376,7 +402,8 @@ fn bst_insertion_backbone_small_with_half_collisions_stm() {
         b.insert(x);
     }
     let var = TVar::new(b);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
@@ -390,6 +417,8 @@ fn bst_insertion_backbone_small_with_half_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(var.read_atomic().size(), 25);
 }
 
@@ -401,7 +430,8 @@ fn bst_insertion_backbone_small_with_half_collisions_single_lock() {
     }
     let l = Arc::new(Mutex::new(b));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
@@ -412,39 +442,42 @@ fn bst_insertion_backbone_small_with_half_collisions_single_lock() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     let mut newl = l.lock().unwrap();
     //assert_eq!(newl.size(), 25);
 }
 
 
-
-
 fn bst_insertion_backbone_medium_with_half_collisions_seq() {
     let mut b = Bst::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         b.insert(x);
     }
-    for x in 0..10 {
-        let mut y = if x < 5 {x -5} else {x + 75};
+    let start = PreciseTime::now();
+    for x in 0..96 {
+        let mut y = if x < 6 {x - 6} else {x + 1000};
         b.insert(y);
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(b.size(), 85);
 }
-
 
 fn bst_insertion_backbone_medium_with_half_collisions_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         b.insert(x);
     }
     let var = TVar::new(b);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
              let mut cur = try!(newvar.read(trans));
-             let mut y = if x < 5 {x -5} else {x + 75};
+             let mut y = if x < 6 {x - 6} else {x + 1000};
              cur.insert(y);
              newvar.write(trans, cur)
             });
@@ -452,29 +485,32 @@ fn bst_insertion_backbone_medium_with_half_collisions_stm() {
     }
     for child in children {
         let _ = child.join();
-    }
+    }let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(var.read_atomic().size(), 85);
 }
 
-
 fn bst_insertion_backbone_medium_with_half_collisions_single_lock() {
     let mut b = Bst::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         b.insert(x);
     }
     let l = Arc::new(Mutex::new(b));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
-        let mut y = if x < 5 {x -5} else {x + 75};
+        let mut y = if x < 6 {x - 6} else {x + 1000};
         newb.insert(y);
         }));
     }
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     let mut newl = l.lock().unwrap();
     //assert_eq!(newl.size(), 85);
 }
@@ -482,13 +518,16 @@ fn bst_insertion_backbone_medium_with_half_collisions_single_lock() {
 
 fn bst_insertion_backbone_large_with_half_collisions_seq() {
     let mut b = Bst::new();
-    for x in 0..115 {
+    for x in 0..5000 {
         b.insert(x);
     }
-    for x in 0..10 {
-        let mut y = if x < 5 {x -5} else {x + 115};
+    let start = PreciseTime::now();
+    for x in 0..96 {
+        let mut y = if x < 6 {x - 6} else {x + 5000};
         b.insert(y);
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(b.size(), 125);
 }
 
@@ -496,16 +535,17 @@ fn bst_insertion_backbone_large_with_half_collisions_seq() {
 fn bst_insertion_backbone_large_with_half_collisions_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
-    for x in 0..115 {
+    for x in 0..5000 {
         b.insert(x);
     }
     let var = TVar::new(b);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
              let mut cur = try!(newvar.read(trans));
-             let mut y = if x < 5 {x -5} else {x + 115};
+             let mut y = if x < 6 {x - 6} else {x + 5000};
              cur.insert(y);
              newvar.write(trans, cur)
             });
@@ -514,27 +554,33 @@ fn bst_insertion_backbone_large_with_half_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(var.read_atomic().size(), 125);
 }
 
 
 fn bst_insertion_backbone_large_with_half_collisions_single_lock() {
     let mut b = Bst::new();
-    for x in 0..115 {
+    for x in 0..5000 {
         b.insert(x);
     }
     let l = Arc::new(Mutex::new(b));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
-        newb.insert(x + 115);
+        let mut y = if x < 6 {x - 6} else {x + 5000};
+        newb.insert(y);
         }));
     }
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     let mut newl = l.lock().unwrap();
     //assert_eq!(newl.size(), 125);
 }
@@ -545,9 +591,12 @@ fn bst_insertion_backbone_small_with_no_collisions_seq() {
     for x in 0..15 {
         b.insert(x * 2);
     }
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         b.insert(x * 2 + 1);
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(b.size(), 25);
 }
 
@@ -559,7 +608,8 @@ fn bst_insertion_backbone_small_with_no_collisions_stm() {
         b.insert(x * 2);
     }
     let var = TVar::new(b);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
@@ -572,6 +622,8 @@ fn bst_insertion_backbone_small_with_no_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(var.read_atomic().size(), 25);
 }
 
@@ -583,7 +635,8 @@ fn bst_insertion_backbone_small_with_no_collisions_single_lock() {
     }
     let l = Arc::new(Mutex::new(b));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
@@ -593,21 +646,24 @@ fn bst_insertion_backbone_small_with_no_collisions_single_lock() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     let mut newl = l.lock().unwrap();
     //assert_eq!(newl.size(), 25);
 }
 
 
-
-
 fn bst_insertion_backbone_medium_with_no_collisions_seq() {
     let mut b = Bst::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         b.insert(x * 2);
     }
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         b.insert(x * 2 + 1);
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(b.size(), 85);
 }
 
@@ -615,11 +671,12 @@ fn bst_insertion_backbone_medium_with_no_collisions_seq() {
 fn bst_insertion_backbone_medium_with_no_collisions_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         b.insert(x * 2);
     }
     let var = TVar::new(b);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
@@ -632,18 +689,21 @@ fn bst_insertion_backbone_medium_with_no_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(var.read_atomic().size(), 85);
 }
 
 
 fn bst_insertion_backbone_medium_with_no_collisions_single_lock() {
     let mut b = Bst::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         b.insert(x * 2);
     }
     let l = Arc::new(Mutex::new(b));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
@@ -653,31 +713,35 @@ fn bst_insertion_backbone_medium_with_no_collisions_single_lock() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     let mut newl = l.lock().unwrap();
     //assert_eq!(newl.size(), 85);
 }
 
-
 fn bst_insertion_backbone_large_with_no_collisions_seq() {
     let mut b = Bst::new();
-    for x in 0..115 {
+    for x in 0..5000 {
         b.insert(x * 2);
     }
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         b.insert(x * 2 + 1);
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(b.size(), 125);
 }
-
 
 fn bst_insertion_backbone_large_with_no_collisions_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
-    for x in 0..115 {
+    for x in 0..5000 {
         b.insert(x * 2);
     }
     let var = TVar::new(b);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
@@ -690,18 +754,21 @@ fn bst_insertion_backbone_large_with_no_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(var.read_atomic().size(), 125);
 }
 
 
 fn bst_insertion_backbone_large_with_no_collisions_single_lock() {
     let mut b = Bst::new();
-    for x in 0..115 {
+    for x in 0..5000 {
         b.insert(x * 2);
     }
     let l = Arc::new(Mutex::new(b));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
@@ -711,11 +778,11 @@ fn bst_insertion_backbone_large_with_no_collisions_single_lock() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     let mut newl = l.lock().unwrap();
     //assert_eq!(newl.size(), 125);
 }
-
-
 
 fn bst_insertion_random_small_seq() {
     let mut b = Bst::new();
@@ -723,11 +790,13 @@ fn bst_insertion_random_small_seq() {
     for x in 0..15 {
         b.insert(rng.gen_range(0, 38));
     }
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         b.insert(rng.gen_range(0, 38));
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
 }
-
 
 fn bst_insertion_random_small_stm() {
     let mut children = vec![];
@@ -737,7 +806,8 @@ fn bst_insertion_random_small_stm() {
         b.insert(rng.gen_range(0, 38));
     }
     let var = TVar::new(b);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
@@ -751,8 +821,9 @@ fn bst_insertion_random_small_stm() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
 }
-
 
 fn bst_insertion_random_small_single_lock() {
     let mut b = Bst::new();
@@ -762,7 +833,8 @@ fn bst_insertion_random_small_single_lock() {
     }
     let l = Arc::new(Mutex::new(b));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut rng = thread_rng();
@@ -773,18 +845,22 @@ fn bst_insertion_random_small_single_lock() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
 }
-
 
 fn bst_insertion_random_medium_seq() {
     let mut b = Bst::new();
     let mut rng = thread_rng();
-    for x in 0..15 {
-        b.insert(rng.gen_range(0, 128));
+    for x in 0..1000 {
+        b.insert(rng.gen_range(0, 1500));
     }
-    for x in 0..10 {
-        b.insert(rng.gen_range(0, 128));
+    let start = PreciseTime::now();
+    for x in 0..96 {
+        b.insert(rng.gen_range(0, 1500));
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
 }
 
 
@@ -792,77 +868,84 @@ fn bst_insertion_random_medium_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
     let mut rng = thread_rng();
-    for x in 0..75 {
-        b.insert(rng.gen_range(0, 128));
+    for x in 0..1000 {
+        b.insert(rng.gen_range(0, 1500));
     }
     let var = TVar::new(b);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
              let mut rng = thread_rng();
              let mut cur = try!(newvar.read(trans));
-             cur.insert(rng.gen_range(0, 128));
+             cur.insert(rng.gen_range(0, 1500));
              newvar.write(trans, cur)
             });
         }));
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     for child in children {
         let _ = child.join();
     }
 }
 
-
 fn bst_insertion_random_medium_single_lock() {
     let mut b = Bst::new();
     let mut rng = thread_rng();
-    for x in 0..75 {
-        b.insert(rng.gen_range(0, 128));
+    for x in 0..1000 {
+        b.insert(rng.gen_range(0, 1500));
     }
     let l = Arc::new(Mutex::new(b));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut rng = thread_rng();
         let mut newb = data.lock().unwrap();
-        newb.insert(rng.gen_range(0, 128));
+        newb.insert(rng.gen_range(0, 1500));
         }));
     }
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
 }
-
 
 fn bst_insertion_random_large_seq() {
     let mut b = Bst::new();
     let mut rng = thread_rng();
-    for x in 0..115 {
-        b.insert(rng.gen_range(0, 190));
+    for x in 0..5000 {
+        b.insert(rng.gen_range(0, 7500));
     }
     let mut rng = thread_rng();
-    for x in 0..10 {
-        b.insert(rng.gen_range(0, 190));
+    let start = PreciseTime::now();
+    for x in 0..96 {
+        b.insert(rng.gen_range(0, 7500));
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
 }
-
 
 fn bst_insertion_random_large_stm() {
     let mut children = vec![];
     let mut b = Bst::new();
     let mut rng = thread_rng();
-    for x in 0..115 {
-        b.insert(rng.gen_range(0, 190));
+    for x in 0..5000 {
+        b.insert(rng.gen_range(0, 7500));
     }
     let var = TVar::new(b);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
              let mut rng = thread_rng();
              let mut cur = try!(newvar.read(trans));
-             cur.insert(rng.gen_range(0, 190));
+             cur.insert(rng.gen_range(0, 7500));
              newvar.write(trans, cur)
             });
         }));
@@ -870,42 +953,47 @@ fn bst_insertion_random_large_stm() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
 }
-
 
 fn bst_insertion_random_large_single_lock() {
     let mut b = Bst::new();
     let mut rng = thread_rng();
-    for x in 0..115 {
-        b.insert(rng.gen_range(0, 190));
+    for x in 0..5000 {
+        b.insert(rng.gen_range(0, 7500));
     }
     let l = Arc::new(Mutex::new(b));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut rng = thread_rng();
         let mut newb = data.lock().unwrap();
-        newb.insert(rng.gen_range(0, 190));
+        newb.insert(rng.gen_range(0, 7500));
         }));
     }
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
 }
-
 
 fn ll_insertion_small_with_all_collisions_seq() {
     let mut l = Ll::new();
     for x in 0..15 {
         l.insert(x);
     }
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         l.insert(x + 15);
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));   
     //assert_eq!(l.len(), 25);
 }
-
 
 fn ll_insertion_small_with_all_collisions_stm() {
     let mut children = vec![];
@@ -914,7 +1002,8 @@ fn ll_insertion_small_with_all_collisions_stm() {
         l.insert(x);
     }
     let var = TVar::new(l);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
@@ -927,9 +1016,10 @@ fn ll_insertion_small_with_all_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(var.read_atomic().len(), 25);
 }
-
 
 fn ll_insertion_small_with_all_collisions_single_lock() {
     let mut ll = Ll::new();
@@ -938,7 +1028,8 @@ fn ll_insertion_small_with_all_collisions_single_lock() {
     }
     let l = Arc::new(Mutex::new(ll));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
@@ -948,6 +1039,8 @@ fn ll_insertion_small_with_all_collisions_single_lock() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     let mut newl = l.lock().unwrap();
     //assert_eq!(newl.len(), 25);
 }
@@ -955,29 +1048,32 @@ fn ll_insertion_small_with_all_collisions_single_lock() {
 
 fn ll_insertion_medium_with_all_collisions_seq() {
     let mut l = Ll::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         l.insert(x);
     }
-    for x in 0..10 {
-        l.insert(x + 75);
+    let start = PreciseTime::now();
+    for x in 0..96 {
+        l.insert(x + 1000);
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(l.len(), 85);
 }
-
 
 fn ll_insertion_medium_with_all_collisions_stm() {
     let mut children = vec![];
     let mut l = Ll::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         l.insert(x);
     }
     let var = TVar::new(l);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
              let mut cur = try!(newvar.read(trans));
-             cur.insert(x + 75);
+             cur.insert(x + 1000);
              newvar.write(trans, cur)
             });
         }));
@@ -985,57 +1081,63 @@ fn ll_insertion_medium_with_all_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(var.read_atomic().len(), 85);
 }
 
-
 fn ll_insertion_medium_with_all_collisions_single_lock() {
     let mut ll = Ll::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         ll.insert(x);
     }
     let l = Arc::new(Mutex::new(ll));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
-        newb.insert(x + 75);
+        newb.insert(x + 1000);
         }));
     }
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     let mut newl = l.lock().unwrap();
     //assert_eq!(newl.len(), 85);
 }
 
-
 fn ll_insertion_large_with_all_collisions_seq() {
     let mut l = Ll::new();
-    for x in 0..115 {
+    for x in 0..3000 {
         l.insert(x);
     }
-    for x in 0..10 {
-        l.insert(x + 115);
+    let start = PreciseTime::now();
+    for x in 0..96 {
+        l.insert(x + 3000);
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(l.len(), 125);
 }
-
 
 fn ll_insertion_large_with_all_collisions_stm() {
     let mut children = vec![];
     let mut l = Ll::new();
-    for x in 0..115 {
+    for x in 0..3000 {
         l.insert(x);
     }
     let var = TVar::new(l);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
              let mut cur = try!(newvar.read(trans));
-             cur.insert(x + 115);
+             cur.insert(x + 3000);
              newvar.write(trans, cur)
             });
         }));
@@ -1043,18 +1145,21 @@ fn ll_insertion_large_with_all_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(var.read_atomic().len(), 125);
 }
 
 
 fn ll_insertion_large_with_all_collisions_single_lock() {
     let mut ll = Ll::new();
-    for x in 0..115 {
+    for x in 0..3000 {
         ll.insert(x);
     }
     let l = Arc::new(Mutex::new(ll));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
@@ -1064,23 +1169,26 @@ fn ll_insertion_large_with_all_collisions_single_lock() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     let mut newl = l.lock().unwrap();
     //assert_eq!(newl.len(), 125);
 }
-
 
 fn ll_insertion_small_with_half_collisions_seq() {
     let mut l = Ll::new();
     for x in 0..15 {
         l.insert(x);
     }
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let y = if x < 5 {x - 5} else {x + 15};
         l.insert(y);
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(l.len(), 25);
 }
-
 
 fn ll_insertion_small_with_half_collisions_stm() {
     let mut children = vec![];
@@ -1089,7 +1197,8 @@ fn ll_insertion_small_with_half_collisions_stm() {
         l.insert(x);
     }
     let var = TVar::new(l);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
@@ -1103,9 +1212,10 @@ fn ll_insertion_small_with_half_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(var.read_atomic().len(), 25);
 }
-
 
 fn ll_insertion_small_with_half_collisions_single_lock() {
     let mut ll = Ll::new();
@@ -1114,7 +1224,8 @@ fn ll_insertion_small_with_half_collisions_single_lock() {
     }
     let l = Arc::new(Mutex::new(ll));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
@@ -1125,37 +1236,41 @@ fn ll_insertion_small_with_half_collisions_single_lock() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     let mut newl = l.lock().unwrap();
     //assert_eq!(newl.len(), 25);
 }
 
-
 fn ll_insertion_medium_with_half_collisions_seq() {
     let mut l = Ll::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         l.insert(x);
     }
-    for x in 0..10 {
-        let y = if x < 5 {x - 5} else {x + 75};
+    let start = PreciseTime::now();
+    for x in 0..96 {
+        let y = if x < 5 {x - 5} else {x + 1000};
         l.insert(y);
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(l.len(), 85);
 }
-
 
 fn ll_insertion_medium_with_half_collisions_stm() {
     let mut children = vec![];
     let mut l = Ll::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         l.insert(x);
     }
     let var = TVar::new(l);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
              let mut cur = try!(newvar.read(trans));
-             let y = if x < 5 {x - 5} else {x + 75};
+             let y = if x < 5 {x - 5} else {x + 1000};
              cur.insert(y);
              newvar.write(trans, cur)
             });
@@ -1164,42 +1279,48 @@ fn ll_insertion_medium_with_half_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(var.read_atomic().len(), 85);
 }
 
-
 fn ll_insertion_medium_with_half_collisions_single_lock() {
     let mut ll = Ll::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         ll.insert(x);
     }
     let l = Arc::new(Mutex::new(ll));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
-        let y = if x < 5 {x - 5} else {x + 75};
+        let y = if x < 5 {x - 5} else {x + 1000};
         newb.insert(y);
         }));
     }
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     let mut newl = l.lock().unwrap();
     //assert_eq!(newl.len(), 85);
 }
 
-
 fn ll_insertion_large_with_half_collisions_seq() {
     let mut l = Ll::new();
-    for x in 0..115 {
+    for x in 0..3000 {
         l.insert(x);
     }
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let y = if x < 5 {x - 5} else {x + 115};
         l.insert(y);
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(l.len(), 125);
 }
 
@@ -1207,11 +1328,12 @@ fn ll_insertion_large_with_half_collisions_seq() {
 fn ll_insertion_large_with_half_collisions_stm() {
     let mut children = vec![];
     let mut l = Ll::new();
-    for x in 0..115 {
+    for x in 0..3000 {
         l.insert(x);
     }
     let var = TVar::new(l);
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
@@ -1225,18 +1347,21 @@ fn ll_insertion_large_with_half_collisions_stm() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     //assert_eq!(var.read_atomic().len(), 125);
 }
 
-
+#[test]
 fn ll_insertion_large_with_half_collisions_single_lock() {
     let mut ll = Ll::new();
-    for x in 0..115 {
+    for x in 0..3000 {
         ll.insert(x);
     }
     let l = Arc::new(Mutex::new(ll));
     let mut children = vec![];
-    for x in 0..10 {
+    let start = PreciseTime::now();
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
@@ -1247,6 +1372,8 @@ fn ll_insertion_large_with_half_collisions_single_lock() {
     for child in children {
         let _ = child.join();
     }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
     let mut newl = l.lock().unwrap();
     //assert_eq!(newl.len(), 125);
 }
@@ -1257,7 +1384,7 @@ fn ll_insertion_small_with_no_collisions_seq() {
     for x in 0..15 {
         l.insert(x * 2);
     }
-    for x in 0..10 {
+    for x in 0..96 {
         l.insert(x * 2  + 1);
     }
     //assert_eq!(l.len(), 25);
@@ -1271,7 +1398,7 @@ fn ll_insertion_small_with_no_collisions_stm() {
         l.insert(x * 2);
     }
     let var = TVar::new(l);
-    for x in 0..10 {
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
@@ -1295,7 +1422,7 @@ fn ll_insertion_small_with_no_collisions_single_lock() {
     }
     let l = Arc::new(Mutex::new(ll));
     let mut children = vec![];
-    for x in 0..10 {
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
@@ -1312,10 +1439,10 @@ fn ll_insertion_small_with_no_collisions_single_lock() {
 
 fn ll_insertion_medium_with_no_collisions_seq() {
     let mut l = Ll::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         l.insert(x * 2);
     }
-    for x in 0..10 {
+    for x in 0..96 {
         l.insert(x * 2  + 1);
     }
     //assert_eq!(l.len(), 85);
@@ -1325,11 +1452,11 @@ fn ll_insertion_medium_with_no_collisions_seq() {
 fn ll_insertion_medium_with_no_collisions_stm() {
     let mut children = vec![];
     let mut l = Ll::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         l.insert(x * 2);
     }
     let var = TVar::new(l);
-    for x in 0..10 {
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
@@ -1348,12 +1475,12 @@ fn ll_insertion_medium_with_no_collisions_stm() {
 
 fn ll_insertion_medium_with_no_collisions_single_lock() {
     let mut ll = Ll::new();
-    for x in 0..75 {
+    for x in 0..1000 {
         ll.insert(x * 2);
     }
     let l = Arc::new(Mutex::new(ll));
     let mut children = vec![];
-    for x in 0..10 {
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
@@ -1370,10 +1497,10 @@ fn ll_insertion_medium_with_no_collisions_single_lock() {
 
 fn ll_insertion_large_with_no_collisions_seq() {
     let mut l = Ll::new();
-    for x in 0..115 {
+    for x in 0..5000 {
         l.insert(x * 2);
     }
-    for x in 0..10 {
+    for x in 0..96 {
         l.insert(x * 2  + 1);
     }
     //assert_eq!(l.len(), 125);
@@ -1383,11 +1510,11 @@ fn ll_insertion_large_with_no_collisions_seq() {
 fn ll_insertion_large_with_no_collisions_stm() {
     let mut children = vec![];
     let mut l = Ll::new();
-    for x in 0..115 {
+    for x in 0..5000 {
         l.insert(x * 2);
     }
     let var = TVar::new(l);
-    for x in 0..10 {
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
@@ -1406,12 +1533,12 @@ fn ll_insertion_large_with_no_collisions_stm() {
 
 fn ll_insertion_large_with_no_collisions_single_lock() {
     let mut ll = Ll::new();
-    for x in 0..115 {
+    for x in 0..5000 {
         ll.insert(x * 2);
     }
     let l = Arc::new(Mutex::new(ll));
     let mut children = vec![];
-    for x in 0..10 {
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut newb = data.lock().unwrap();
@@ -1433,7 +1560,7 @@ fn ll_insertion_random_small_seq() {
         ll.insert(rng.gen_range(0, 38));
     }
     let mut rng = thread_rng();
-    for x in 0..10 {
+    for x in 0..96 {
         ll.insert(rng.gen_range(0, 38));
     }
 }
@@ -1447,7 +1574,7 @@ fn ll_insertion_random_small_stm() {
         ll.insert(rng.gen_range(0, 38));
     }
     let var = TVar::new(ll);
-    for x in 0..10 {
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
@@ -1472,7 +1599,7 @@ fn ll_insertion_random_small_single_lock() {
     }
     let l = Arc::new(Mutex::new(ll));
     let mut children = vec![];
-    for x in 0..10 {
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut rng = thread_rng();
@@ -1489,11 +1616,11 @@ fn ll_insertion_random_small_single_lock() {
 fn ll_insertion_random_medium_seq() {
     let mut ll = Ll::new();
     let mut rng = thread_rng();
-    for x in 0..75 {
+    for x in 0..1000 {
         ll.insert(rng.gen_range(0, 130));
     }
     let mut rng = thread_rng();
-    for x in 0..10 {
+    for x in 0..96 {
         ll.insert(rng.gen_range(0, 130));
     }
 }
@@ -1503,11 +1630,11 @@ fn ll_insertion_random_medium_stm() {
     let mut children = vec![];
     let mut ll = Ll::new();
     let mut rng = thread_rng();
-    for x in 0..75 {
+    for x in 0..1000 {
         ll.insert(rng.gen_range(0, 130));
     }
     let var = TVar::new(ll);
-    for x in 0..10 {
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
@@ -1527,12 +1654,12 @@ fn ll_insertion_random_medium_stm() {
 fn ll_insertion_random_medium_single_lock() {
     let mut ll = Ll::new();
     let mut rng = thread_rng();
-    for x in 0..75 {
+    for x in 0..1000 {
         ll.insert(rng.gen_range(0, 130));
     }
     let l = Arc::new(Mutex::new(ll));
     let mut children = vec![];
-    for x in 0..10 {
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut rng = thread_rng();
@@ -1549,25 +1676,24 @@ fn ll_insertion_random_medium_single_lock() {
 fn ll_insertion_random_large_seq() {
     let mut ll = Ll::new();
     let mut rng = thread_rng();
-    for x in 0..115 {
+    for x in 0..5000 {
         ll.insert(rng.gen_range(0, 190));
     }
     let mut rng = thread_rng();
-    for x in 0..10 {
+    for x in 0..96 {
         ll.insert(rng.gen_range(0, 190));
     }
 }
-
 
 fn ll_insertion_random_large_stm() {
     let mut children = vec![];
     let mut ll = Ll::new();
     let mut rng = thread_rng();
-    for x in 0..115 {
+    for x in 0..5000 {
         ll.insert(rng.gen_range(0, 190));
     }
     let var = TVar::new(ll);
-    for x in 0..10 {
+    for x in 0..96 {
         let newvar = var.clone();
         children.push(thread::spawn(move || {
             atomically(|trans| {
@@ -1583,16 +1709,15 @@ fn ll_insertion_random_large_stm() {
     }
 }
 
-
 fn ll_insertion_random_large_single_lock() {
     let mut ll = Ll::new();
     let mut rng = thread_rng();
-    for x in 0..115 {
+    for x in 0..5000 {
         ll.insert(rng.gen_range(0, 190));
     }
     let l = Arc::new(Mutex::new(ll));
     let mut children = vec![];
-    for x in 0..10 {
+    for x in 0..96 {
         let data = l.clone();
         children.push(thread::spawn(move || {
         let mut rng = thread_rng();
