@@ -64,15 +64,16 @@ impl Transaction {
                                     return Ok(Transaction::downcast(value));}
             None => { }
         }
+        let mut value = var.read_ref_atomic();
         while self.snapshot != GLOBAL_SEQ_LOCK.load(Ordering::SeqCst) {
             match self.validate() {
                 None => { return Err(Retry); }
                 Some(ss) => {
                     self.snapshot = ss;
+                    value = var.read_ref_atomic();
                 }
             }
         }
-        let value = var.read_ref_atomic();
         let ctrl = var.control_block().clone();
         self.readvars.insert(ctrl, value.clone());
         Ok(Transaction::downcast(value))
