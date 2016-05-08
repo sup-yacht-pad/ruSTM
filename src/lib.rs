@@ -339,10 +339,10 @@ fn bst_insertion_backbone_small_with_all_collisions_hh_lock() {
     }
     let mut children = vec![];
     let start = PreciseTime::now();
-    for x in 0..16 {
+    for x in 0..4 {
         let mut cloneb = b.clone();
         children.push(thread::spawn(move || {
-        for y in (6*x)..(6*(x+1)) {
+        for y in (24*x)..(24*(x+1)) {
             cloneb.insert(y + 1000);
         }
         }));
@@ -352,7 +352,6 @@ fn bst_insertion_backbone_small_with_all_collisions_hh_lock() {
     }
     let end = PreciseTime::now();
     println!("{} seconds for whatever you did.", start.to(end));
-    println!("size of tree = {}", b.size());
 }
 
 fn bst_insertion_backbone_medium_with_all_collisions_seq() {
