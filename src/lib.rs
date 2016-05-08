@@ -96,6 +96,89 @@ impl Bst {
     }
 }
 
+#[derive(Clone)]
+#[derive(Debug)]
+struct BstNodehh {
+    val: i32,
+    l: Arc<Mutex<Option<Box<BstNodehh>>>>,
+    r: Arc<Mutex<Option<Box<BstNodehh>>>>,
+}
+
+impl BstNodehh {
+    fn new(new_val: i32) -> BstNodehh {
+        BstNodehh {
+            val: new_val,
+            l: Arc::new(Mutex::new(None)),
+            r: Arc::new(Mutex::new(None))
+        }
+    }
+
+    fn insert(&mut self, new_val: i32) {
+        if self.val == new_val {
+            return
+        }
+        let target_node = if new_val < self.val { &mut self.l } else { &mut self.r };
+        let data = target_node.clone();
+        let mut b = data.lock().unwrap();
+        let flag = match *b {
+            Some(ref mut subnode) => {subnode.insert(new_val); None},
+            None => {
+                let new_node = BstNodehh { val: new_val, l: Arc::new(Mutex::new(None)), r: Arc::new(Mutex::new(None)) };
+                let boxed_node = Some(Box::new(new_node));
+                Some(boxed_node)
+            }
+        };
+        match flag {
+            None => {},
+            Some (boxed) => {*b = boxed},
+        }
+    }
+
+    fn size(&mut self) -> i32 {
+        let datar = (&mut self.r).clone();
+        let datal = (&mut self.l).clone();
+        let mut r = datar.lock().unwrap();
+        let mut l = datal.lock().unwrap();
+        match (&mut *l, &mut *r) {
+            (&mut None, &mut None) => 1,
+            (&mut Some(ref mut subnodel), &mut Some(ref mut subnoder))=> subnodel.size() + subnoder.size() + 1,
+            (&mut None, &mut Some(ref mut subnoder))=> subnoder.size() + 1,
+            (&mut Some(ref mut subnodel), &mut None)=> subnodel.size() + 1,
+        }
+    }
+}
+
+#[derive(Clone)]
+#[derive(Debug)]
+struct Bsthh {
+    root: Arc<Mutex<Option<Box<BstNodehh>>>>,
+}
+
+impl Bsthh {
+    pub fn new() -> Bsthh {
+        Bsthh { root: Arc::new(Mutex::new(None)) }
+    }
+
+    pub fn insert(&mut self, new_val: i32) {
+        let data = self.root.clone();
+        let mut b = data.lock().unwrap();
+        match *b {
+            None => self.root = Arc::new(Mutex::new(Some(Box::new(BstNodehh::new(new_val))))),
+            Some(ref mut r) =>  {r.insert(new_val);},
+        }
+    }
+
+    pub fn size(&mut self) -> i32 {
+        let data = self.root.clone();
+        let mut l = data.lock().unwrap();
+        match *l {
+            None => 0,
+            Some(ref mut subnode) => subnode.size(),
+        }
+    }
+}
+
+
 #[derive(PartialEq)]
 #[derive(Clone)]
 #[derive(Debug)]
@@ -246,6 +329,30 @@ fn bst_insertion_backbone_small_with_all_collisions_single_lock() {
     println!("{} seconds for whatever you did.", start.to(end));
     let mut newl = l.lock().unwrap();
     //assert_eq!(newl.size(), 25);
+}
+
+#[test]
+fn bst_insertion_backbone_small_with_all_collisions_hh_lock() {
+    let mut b = Bsthh::new();
+    for x in 0..1000 {
+        b.insert(x);
+    }
+    let mut children = vec![];
+    let start = PreciseTime::now();
+    for x in 0..16 {
+        let mut cloneb = b.clone();
+        children.push(thread::spawn(move || {
+        for y in (6*x)..(6*(x+1)) {
+            cloneb.insert(y + 1000);
+        }
+        }));
+    }
+    for child in children {
+        let _ = child.join();
+    }
+    let end = PreciseTime::now();
+    println!("{} seconds for whatever you did.", start.to(end));
+    println!("size of tree = {}", b.size());
 }
 
 fn bst_insertion_backbone_medium_with_all_collisions_seq() {
@@ -1024,7 +1131,6 @@ fn ll_insertion_small_with_all_collisions_seq() {
     //assert_eq!(l.len(), 25);
 }
 
-#[test]
 fn ll_insertion_small_with_all_collisions_stm() {
     let mut children = vec![];
     let mut l = Ll::new();
